@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Penyiapan awal VPS — cukup dijalankan SEKALI.
+# Penyiapan awal VPS - cukup dijalankan SEKALI.
 # Untuk pembaruan berikutnya pakai deploy/deploy.sh
 #
 #   sudo bash deploy/cek-server.sh      <- jalankan ini dulu, lalu baca hasilnya
@@ -13,6 +13,8 @@
 #   - tidak menurunkan/menaikkan Node bila versinya sudah memadai
 #   - memakai port API yang masih bebas
 #   - seluruh aturan Apache berada di dalam <VirtualHost> milik domain desa
+#
+# Skrip ini aman dijalankan berulang kali.
 #
 # Diuji pada Ubuntu 22.04 / 24.04 dan Debian 12.
 
@@ -31,7 +33,7 @@ if [[ $EUID -ne 0 ]]; then
   exit 1
 fi
 
-# ── 1. Domain ────────────────────────────────────────────────
+# ---- 1. Domain ----------------------------------------------
 biru "== Alamat website =="
 read -rp "Domain [${DOMAIN_BAWAAN}]: " DOMAIN
 DOMAIN="${DOMAIN:-$DOMAIN_BAWAAN}"
@@ -39,7 +41,7 @@ DOMAIN="${DOMAIN#http://}"; DOMAIN="${DOMAIN#https://}"; DOMAIN="${DOMAIN%%/*}"
 hijau "Website akan dilayani di: http://${DOMAIN}"
 echo
 
-# ── 2. Paket, hanya yang benar-benar kurang ──────────────────
+# ---- 2. Paket, hanya yang benar-benar kurang ----------------
 biru "== Memeriksa paket =="
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
@@ -47,7 +49,7 @@ apt-get update -qq
 PERLU_APT=()
 
 if command -v node >/dev/null && [[ "$(node -v | sed 's/^v//' | cut -d. -f1)" -ge 20 ]]; then
-  hijau "Node $(node -v) sudah memadai — dibiarkan apa adanya."
+  hijau "Node $(node -v) sudah memadai - dibiarkan apa adanya."
 else
   kuning "Node.js akan dipasang/dinaikkan ke versi 20."
   kuning "Perubahan versi Node berlaku untuk SELURUH server."
@@ -61,12 +63,12 @@ command -v apache2ctl >/dev/null && hijau "Apache sudah ada." || PERLU_APT+=(apa
 command -v git >/dev/null || PERLU_APT+=(git)
 dpkg -s build-essential >/dev/null 2>&1 || PERLU_APT+=(build-essential)
 
-# MySQL/MariaDB yang sudah berjalan JANGAN diutak-atik — bisa jadi
+# MySQL/MariaDB yang sudah berjalan JANGAN diutak-atik - bisa jadi
 # tempat data aplikasi lain di server ini.
 if systemctl is-active --quiet mysql || systemctl is-active --quiet mariadb; then
-  hijau "MySQL/MariaDB sudah berjalan — tidak dipasang ulang."
+  hijau "MySQL/MariaDB sudah berjalan - tidak dipasang ulang."
 else
-  kuning "Belum ada database yang berjalan — MySQL akan dipasang."
+  kuning "Belum ada database yang berjalan - MySQL akan dipasang."
   PERLU_APT+=(mysql-server)
 fi
 
@@ -76,7 +78,7 @@ if [[ ${#PERLU_APT[@]} -gt 0 ]]; then
 fi
 echo
 
-# ── 3. Modul Apache ──────────────────────────────────────────
+# ---- 3. Modul Apache ----------------------------------------
 # Menyalakan modul aman bagi situs lain: modul hanya menambah kemampuan,
 # tidak mengubah perilaku vhost yang sudah ada.
 biru "== Menyalakan modul Apache yang dibutuhkan =="
@@ -84,7 +86,7 @@ a2enmod proxy proxy_http rewrite headers deflate >/dev/null
 hijau "proxy, proxy_http, rewrite, headers, deflate aktif."
 echo
 
-# ── 4. Port API yang bebas ───────────────────────────────────
+# ---- 4. Port API yang bebas ---------------------------------
 biru "== Memilih port untuk API =="
 API_PORT=""
 for p in 4000 4001 4002 4003 4004; do
@@ -94,14 +96,17 @@ done
 hijau "API akan berjalan di port ${API_PORT} (hanya diakses lokal lewat Apache)."
 echo
 
-# ── 5. Database ──────────────────────────────────────────────
+# ---- 5. Database & .env -------------------------------------
+# Keduanya digarap bersamaan dan urutannya penting: kata sandi database hanya
+# tersimpan di .env. Kalau .env sudah ada lalu kata sandi pengguna MySQL
+# diganti, keduanya jadi tidak cocok dan API menolak menyala dengan pesan
+# "Access denied" yang menyesatkan. Karena itu bila .env ada, kredensialnya
+# dipakai ulang dan kata sandi TIDAK diubah.
 biru "== Menyiapkan database =="
 DB_NAME="desa_bintang_ninggi"
 DB_USER="desa"
-DB_PASS="$(openssl rand -base64 24 | tr -d '/+=' | head -c 24)"
+ENV_FILE="${APP_DIR}/apps/api/.env"
 
-# Pengguna khusus dengan hak HANYA pada database desa. Tidak memakai root,
-# supaya kebocoran kredensial aplikasi ini tidak menyentuh database lain.
 jalankan_sql() {
   if mysql -e 'SELECT 1' >/dev/null 2>&1; then
     mysql
@@ -111,7 +116,24 @@ jalankan_sql() {
   fi
 }
 
-jalankan_sql <<SQL
+if [[ -f "$ENV_FILE" ]]; then
+  kuning "apps/api/.env sudah ada - kredensial lama dipakai ulang."
+  API_PORT=$(grep -E '^PORT=' "$ENV_FILE" | cut -d= -f2 | tr -d '[:space:]')
+  kuning "Memakai PORT=${API_PORT} dari .env."
+
+  # Database dipastikan ada, tapi kata sandi pengguna tidak disentuh.
+  jalankan_sql <<SQL
+CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`
+  CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';
+FLUSH PRIVILEGES;
+SQL
+else
+  DB_PASS="$(openssl rand -base64 24 | tr -d '/+=' | head -c 24)"
+
+  # Pengguna khusus dengan hak HANYA pada database desa. Tidak memakai root,
+  # supaya kebocoran kredensial aplikasi ini tidak menyentuh database lain.
+  jalankan_sql <<SQL
 CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`
   CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';
@@ -119,19 +141,7 @@ ALTER USER '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';
 GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';
 FLUSH PRIVILEGES;
 SQL
-hijau "Database ${DB_NAME} siap, dengan pengguna '${DB_USER}' yang hanya berhak atasnya."
-echo
 
-# ── 6. Berkas .env ───────────────────────────────────────────
-biru "== Menyusun apps/api/.env =="
-ENV_FILE="${APP_DIR}/apps/api/.env"
-
-if [[ -f "$ENV_FILE" ]]; then
-  kuning "apps/api/.env sudah ada — dibiarkan apa adanya."
-  kuning "Hapus berkas itu lebih dulu bila ingin disusun ulang."
-  API_PORT=$(grep -E '^PORT=' "$ENV_FILE" | cut -d= -f2 | tr -d '[:space:]')
-  kuning "Memakai PORT=${API_PORT} dari .env yang sudah ada."
-else
   ADMIN_PASS="$(openssl rand -base64 18 | tr -d '/+=' | head -c 16)"
   cat > "$ENV_FILE" <<ENV
 NODE_ENV=production
@@ -144,7 +154,7 @@ JWT_REFRESH_SECRET=$(openssl rand -hex 48)
 ACCESS_TOKEN_TTL=15m
 REFRESH_TOKEN_TTL_DAYS=30
 
-# JANGAN mengganti dua kunci ini setelah ada data penduduk —
+# JANGAN mengganti dua kunci ini setelah ada data penduduk -
 # seluruh NIK tersimpan tidak akan bisa dibaca lagi.
 DATA_ENCRYPTION_KEY=$(openssl rand -hex 32)
 DATA_HASH_KEY=$(openssl rand -hex 32)
@@ -164,11 +174,19 @@ ENV
   hijau ".env dibuat. Password admin awal: ${ADMIN_PASS}"
 fi
 
+hijau "Database ${DB_NAME} siap, pengguna '${DB_USER}' hanya berhak atasnya."
+
 mkdir -p "${APP_DIR}/apps/api/uploads"
 chown -R "${RUN_USER}:${RUN_USER}" "${APP_DIR}/apps/api/uploads"
+
+# DocumentRoot harus sudah ada saat configtest dijalankan. Folder ini baru
+# terisi setelah build, tapi keberadaannya saja sudah menghilangkan peringatan
+# AH00112 dan membuat Apache mau memuat konfigurasinya.
+mkdir -p "${APP_DIR}/apps/web/dist"
+chown -R "${RUN_USER}:${RUN_USER}" "${APP_DIR}/apps/web/dist"
 echo
 
-# ── 7. Virtual host ──────────────────────────────────────────
+# ---- 6. Virtual host ----------------------------------------
 biru "== Memasang virtual host Apache =="
 sed -e "s|{{DOMAIN}}|${DOMAIN}|g" \
     -e "s|{{APP_DIR}}|${APP_DIR}|g" \
@@ -193,7 +211,7 @@ if ! apache2ctl configtest; then
 fi
 echo
 
-# ── 8. Layanan systemd ───────────────────────────────────────
+# ---- 7. Layanan systemd -------------------------------------
 biru "== Memasang layanan systemd =="
 sed -e "s|{{APP_DIR}}|${APP_DIR}|g" -e "s|{{RUN_USER}}|${RUN_USER}|g" \
   "${APP_DIR}/deploy/desa-api.service" \
@@ -202,7 +220,7 @@ systemctl daemon-reload
 systemctl enable desa-api >/dev/null
 echo
 
-# ── 9. Build & jalankan ──────────────────────────────────────
+# ---- 8. Build & jalankan ------------------------------------
 # Build dijalankan sebagai pengguna biasa supaya node_modules dan hasil build
 # dimiliki pengguna yang sama dengan yang menjalankan layanan.
 biru "== Membangun aplikasi =="
@@ -223,9 +241,9 @@ fi
 systemctl reload apache2
 
 echo
-hijau "════════════════════════════════════════════════════"
+hijau "===================================================="
 hijau " Penyiapan selesai."
-hijau "════════════════════════════════════════════════════"
+hijau "===================================================="
 echo "  Website  : http://${DOMAIN}"
 echo "  Admin    : http://${DOMAIN}/masuk-perangkat"
 echo "  Pengguna : admin"

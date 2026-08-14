@@ -49,7 +49,12 @@
 
     # Alamat IP asli pengunjung diteruskan ke Express, supaya audit log
     # dan rate limit tidak mencatat 127.0.0.1 untuk semua orang.
-    RequestHeader set X-Forwarded-Proto "http"
+    #
+    # Skema dibaca dari permintaan yang sedang berjalan, bukan ditulis mati.
+    # Certbot membuat vhost HTTPS dengan menyalin berkas ini; kalau nilainya
+    # dipaku "http", vhost HTTPS hasil salinan itu akan berbohong kepada
+    # Express bahwa pengunjungnya datang lewat HTTP.
+    RequestHeader set X-Forwarded-Proto expr=%{REQUEST_SCHEME}
 
     # ── Cache ──
     # Berkas hasil build Vite bernama unik per rilis (index-a1b2c3.js),
@@ -66,7 +71,10 @@
     AddOutputFilterByType DEFLATE text/html text/plain text/css application/javascript application/json image/svg+xml
 
     # ── Pengamanan dasar ──
-    ServerTokens Prod
+    # Catatan: ServerTokens TIDAK bisa ditaruh di sini — direktif itu hanya
+    # berlaku di tingkat server (/etc/apache2/conf-enabled/security.conf), dan
+    # menaruhnya di dalam <VirtualHost> membuat Apache gagal start. Karena VPS
+    # ini dipakai bersama, pengaturan tingkat server memang tidak kita sentuh.
     Header always set X-Content-Type-Options "nosniff"
     Header always set X-Frame-Options "SAMEORIGIN"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
