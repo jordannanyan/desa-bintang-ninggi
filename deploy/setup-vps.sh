@@ -3,15 +3,16 @@
 # Penyiapan awal VPS — cukup dijalankan SEKALI.
 # Untuk pembaruan berikutnya pakai deploy/deploy.sh
 #
+#   sudo bash deploy/cek-server.sh      <- jalankan ini dulu, lalu baca hasilnya
 #   sudo bash deploy/setup-vps.sh
 #
-# Yang dikerjakan:
-#   1. Memasang Node.js 20, Apache, dan MySQL bila belum ada
-#   2. Menyalakan modul Apache yang dibutuhkan
-#   3. Membuat database + pengguna MySQL
-#   4. Menyusun apps/api/.env berikut kunci rahasia yang dibangkitkan acak
-#   5. Memasang virtual host Apache dengan domain pilihan Anda
-#   6. Memasang layanan systemd untuk API
+# PENTING: VPS ini dipakai bersama situs lain (mis. Agro Supply Chain
+# Dashboard). Skrip ini ditulis agar TIDAK menyentuh situs tetangga:
+#   - tidak menonaktifkan vhost mana pun, termasuk 000-default
+#   - tidak memasang ulang Apache/MySQL yang sudah berjalan
+#   - tidak menurunkan/menaikkan Node bila versinya sudah memadai
+#   - memakai port API yang masih bebas
+#   - seluruh aturan Apache berada di dalam <VirtualHost> milik domain desa
 #
 # Diuji pada Ubuntu 22.04 / 24.04 dan Debian 12.
 
@@ -19,10 +20,11 @@ set -euo pipefail
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUN_USER="${SUDO_USER:-$(whoami)}"
+DOMAIN_BAWAAN="desa-bintang-ninggi.webdevpky.site"
 
-biru()  { printf '\033[1;34m%s\033[0m\n' "$*"; }
-hijau() { printf '\033[1;32m%s\033[0m\n' "$*"; }
-kuning(){ printf '\033[1;33m%s\033[0m\n' "$*"; }
+biru()   { printf '\033[1;34m%s\033[0m\n' "$*"; }
+hijau()  { printf '\033[1;32m%s\033[0m\n' "$*"; }
+kuning() { printf '\033[1;33m%s\033[0m\n' "$*"; }
 
 if [[ $EUID -ne 0 ]]; then
   echo "Jalankan dengan sudo: sudo bash deploy/setup-vps.sh" >&2
@@ -31,35 +33,85 @@ fi
 
 # ── 1. Domain ────────────────────────────────────────────────
 biru "== Alamat website =="
-echo "Isi domain yang akan dipakai, misalnya: desabintangninggi1.id"
-echo "Kosongkan untuk memakai alamat IP VPS ini."
-read -rp "Domain: " DOMAIN
-DOMAIN="${DOMAIN:-$(hostname -I | awk '{print $1}')}"
+read -rp "Domain [${DOMAIN_BAWAAN}]: " DOMAIN
+DOMAIN="${DOMAIN:-$DOMAIN_BAWAAN}"
+DOMAIN="${DOMAIN#http://}"; DOMAIN="${DOMAIN#https://}"; DOMAIN="${DOMAIN%%/*}"
 hijau "Website akan dilayani di: http://${DOMAIN}"
+echo
 
-# ── 2. Paket ─────────────────────────────────────────────────
-biru "== Memasang paket yang dibutuhkan =="
+# ── 2. Paket, hanya yang benar-benar kurang ──────────────────
+biru "== Memeriksa paket =="
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
 
-if ! command -v node >/dev/null || [[ "$(node -v | cut -c2-3)" -lt 20 ]]; then
+PERLU_APT=()
+
+if command -v node >/dev/null && [[ "$(node -v | sed 's/^v//' | cut -d. -f1)" -ge 20 ]]; then
+  hijau "Node $(node -v) sudah memadai — dibiarkan apa adanya."
+else
+  kuning "Node.js akan dipasang/dinaikkan ke versi 20."
+  kuning "Perubahan versi Node berlaku untuk SELURUH server."
+  read -rp "Aplikasi lain di VPS ini aman dengan Node 20? [y/N]: " LANJUT
+  [[ "${LANJUT,,}" == "y" ]] || { echo "Dibatalkan."; exit 1; }
   curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-  apt-get install -y nodejs
+  PERLU_APT+=(nodejs)
 fi
-apt-get install -y apache2 mysql-server git build-essential
 
-biru "== Menyalakan modul Apache =="
-# proxy & proxy_http meneruskan /api ke Express; rewrite untuk React Router;
-# headers untuk aturan cache dan keamanan.
+command -v apache2ctl >/dev/null && hijau "Apache sudah ada." || PERLU_APT+=(apache2)
+command -v git >/dev/null || PERLU_APT+=(git)
+dpkg -s build-essential >/dev/null 2>&1 || PERLU_APT+=(build-essential)
+
+# MySQL/MariaDB yang sudah berjalan JANGAN diutak-atik — bisa jadi
+# tempat data aplikasi lain di server ini.
+if systemctl is-active --quiet mysql || systemctl is-active --quiet mariadb; then
+  hijau "MySQL/MariaDB sudah berjalan — tidak dipasang ulang."
+else
+  kuning "Belum ada database yang berjalan — MySQL akan dipasang."
+  PERLU_APT+=(mysql-server)
+fi
+
+if [[ ${#PERLU_APT[@]} -gt 0 ]]; then
+  biru "Memasang: ${PERLU_APT[*]}"
+  apt-get install -y "${PERLU_APT[@]}"
+fi
+echo
+
+# ── 3. Modul Apache ──────────────────────────────────────────
+# Menyalakan modul aman bagi situs lain: modul hanya menambah kemampuan,
+# tidak mengubah perilaku vhost yang sudah ada.
+biru "== Menyalakan modul Apache yang dibutuhkan =="
 a2enmod proxy proxy_http rewrite headers deflate >/dev/null
+hijau "proxy, proxy_http, rewrite, headers, deflate aktif."
+echo
 
-# ── 3. Database ──────────────────────────────────────────────
-biru "== Menyiapkan database MySQL =="
+# ── 4. Port API yang bebas ───────────────────────────────────
+biru "== Memilih port untuk API =="
+API_PORT=""
+for p in 4000 4001 4002 4003 4004; do
+  if ! ss -ltn 2>/dev/null | grep -q ":${p} "; then API_PORT="$p"; break; fi
+done
+[[ -z "$API_PORT" ]] && { echo "Tidak ada port bebas di 4000-4004." >&2; exit 1; }
+hijau "API akan berjalan di port ${API_PORT} (hanya diakses lokal lewat Apache)."
+echo
+
+# ── 5. Database ──────────────────────────────────────────────
+biru "== Menyiapkan database =="
 DB_NAME="desa_bintang_ninggi"
 DB_USER="desa"
 DB_PASS="$(openssl rand -base64 24 | tr -d '/+=' | head -c 24)"
 
-mysql <<SQL
+# Pengguna khusus dengan hak HANYA pada database desa. Tidak memakai root,
+# supaya kebocoran kredensial aplikasi ini tidak menyentuh database lain.
+jalankan_sql() {
+  if mysql -e 'SELECT 1' >/dev/null 2>&1; then
+    mysql
+  else
+    kuning "Perlu kata sandi root MySQL." >&2
+    mysql -u root -p
+  fi
+}
+
+jalankan_sql <<SQL
 CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`
   CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';
@@ -67,20 +119,23 @@ ALTER USER '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';
 GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';
 FLUSH PRIVILEGES;
 SQL
-hijau "Database ${DB_NAME} siap."
+hijau "Database ${DB_NAME} siap, dengan pengguna '${DB_USER}' yang hanya berhak atasnya."
+echo
 
-# ── 4. Berkas .env ───────────────────────────────────────────
+# ── 6. Berkas .env ───────────────────────────────────────────
 biru "== Menyusun apps/api/.env =="
 ENV_FILE="${APP_DIR}/apps/api/.env"
 
 if [[ -f "$ENV_FILE" ]]; then
   kuning "apps/api/.env sudah ada — dibiarkan apa adanya."
   kuning "Hapus berkas itu lebih dulu bila ingin disusun ulang."
+  API_PORT=$(grep -E '^PORT=' "$ENV_FILE" | cut -d= -f2 | tr -d '[:space:]')
+  kuning "Memakai PORT=${API_PORT} dari .env yang sudah ada."
 else
   ADMIN_PASS="$(openssl rand -base64 18 | tr -d '/+=' | head -c 16)"
   cat > "$ENV_FILE" <<ENV
 NODE_ENV=production
-PORT=4000
+PORT=${API_PORT}
 
 DATABASE_URL="mysql://${DB_USER}:${DB_PASS}@localhost:3306/${DB_NAME}"
 
@@ -104,37 +159,68 @@ ADMIN_PASSWORD_AWAL=${ADMIN_PASS}
 ENV
   chown "${RUN_USER}:${RUN_USER}" "$ENV_FILE"
   chmod 600 "$ENV_FILE"
-  hijau ".env dibuat. Password admin awal: ${ADMIN_PASS}"
   echo "${ADMIN_PASS}" > "${APP_DIR}/.password-admin-awal.txt"
   chmod 600 "${APP_DIR}/.password-admin-awal.txt"
+  hijau ".env dibuat. Password admin awal: ${ADMIN_PASS}"
 fi
 
 mkdir -p "${APP_DIR}/apps/api/uploads"
 chown -R "${RUN_USER}:${RUN_USER}" "${APP_DIR}/apps/api/uploads"
+echo
 
-# ── 5. Virtual host Apache ───────────────────────────────────
+# ── 7. Virtual host ──────────────────────────────────────────
 biru "== Memasang virtual host Apache =="
-sed -e "s|{{DOMAIN}}|${DOMAIN}|g" -e "s|{{APP_DIR}}|${APP_DIR}|g" \
-  "${APP_DIR}/deploy/apache/desa.conf.template" \
-  > /etc/apache2/sites-available/desa.conf
+sed -e "s|{{DOMAIN}}|${DOMAIN}|g" \
+    -e "s|{{APP_DIR}}|${APP_DIR}|g" \
+    -e "s|{{API_PORT}}|${API_PORT}|g" \
+    "${APP_DIR}/deploy/apache/desa.conf.template" \
+    > /etc/apache2/sites-available/desa.conf
 
 a2ensite desa.conf >/dev/null
-a2dissite 000-default.conf >/dev/null 2>&1 || true
+
+# Situs lain SENGAJA tidak disentuh. Sebelum ada vhost ini, domain desa
+# jatuh ke vhost default (situs tetangga); begitu ServerName cocok, Apache
+# mengarahkannya ke sini tanpa mengubah apa pun milik situs itu.
+kuning "Situs lain di server ini tidak diubah sama sekali."
 
 # Apache perlu bisa menelusuri folder aplikasi untuk menyajikan hasil build.
 chmod o+x "${APP_DIR}" "${APP_DIR}/apps" "${APP_DIR}/apps/web" 2>/dev/null || true
 
-# ── 6. Layanan systemd ───────────────────────────────────────
+if ! apache2ctl configtest; then
+  echo "Konfigurasi Apache bermasalah. desa.conf dinonaktifkan kembali." >&2
+  a2dissite desa.conf >/dev/null
+  exit 1
+fi
+echo
+
+# ── 8. Layanan systemd ───────────────────────────────────────
 biru "== Memasang layanan systemd =="
 sed -e "s|{{APP_DIR}}|${APP_DIR}|g" -e "s|{{RUN_USER}}|${RUN_USER}|g" \
   "${APP_DIR}/deploy/desa-api.service" \
   > /etc/systemd/system/desa-api.service
 systemctl daemon-reload
 systemctl enable desa-api >/dev/null
+echo
 
-# ── 7. Build & jalankan ──────────────────────────────────────
+# ── 9. Build & jalankan ──────────────────────────────────────
+# Build dijalankan sebagai pengguna biasa supaya node_modules dan hasil build
+# dimiliki pengguna yang sama dengan yang menjalankan layanan.
 biru "== Membangun aplikasi =="
-sudo -u "${RUN_USER}" bash "${APP_DIR}/deploy/deploy.sh" --lewati-pull
+chown -R "${RUN_USER}:${RUN_USER}" "${APP_DIR}" 2>/dev/null || true
+sudo -u "${RUN_USER}" bash "${APP_DIR}/deploy/deploy.sh" \
+  --lewati-pull --lewati-restart --dengan-seed
+
+biru "== Menjalankan layanan =="
+systemctl restart desa-api
+sleep 3
+if systemctl is-active --quiet desa-api; then
+  hijau "API berjalan di port ${API_PORT}."
+else
+  echo "API gagal jalan. Lihat: sudo journalctl -u desa-api -n 50" >&2
+  exit 1
+fi
+
+systemctl reload apache2
 
 echo
 hijau "════════════════════════════════════════════════════"
@@ -144,9 +230,13 @@ echo "  Website  : http://${DOMAIN}"
 echo "  Admin    : http://${DOMAIN}/masuk-perangkat"
 echo "  Pengguna : admin"
 echo "  Password : lihat ${APP_DIR}/.password-admin-awal.txt"
+echo "  API      : port ${API_PORT} (lokal saja)"
 echo
 kuning "Ganti password admin segera setelah login pertama,"
 kuning "lalu hapus berkas .password-admin-awal.txt"
 echo
-echo "Pembaruan berikutnya cukup jalankan:"
+echo "Pasang HTTPS (domain sudah mengarah ke server ini):"
+echo "  sudo bash deploy/pasang-https.sh ${DOMAIN}"
+echo
+echo "Pembaruan berikutnya cukup:"
 echo "  cd ${APP_DIR} && bash deploy/deploy.sh"

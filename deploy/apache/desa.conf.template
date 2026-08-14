@@ -3,14 +3,17 @@
 #
 # Berkas ini adalah TEMPLATE. Jangan diedit langsung di server —
 # jalankan `sudo bash deploy/setup-vps.sh` yang akan mengisi
-# {{DOMAIN}} dan {{APP_DIR}} lalu menaruh hasilnya di
+# {{DOMAIN}}, {{APP_DIR}}, dan {{API_PORT}} lalu menaruh hasilnya di
 # /etc/apache2/sites-available/desa.conf
 #
 # Susunannya:
 #   Apache menyajikan hasil build React sebagai berkas statis, dan
-#   meneruskan /api serta /uploads ke Express di port 4000. Karena
-#   keduanya lewat satu domain, tidak ada masalah CORS maupun cookie
-#   lintas situs.
+#   meneruskan /api serta /uploads ke Express. Karena keduanya lewat
+#   satu domain, tidak ada masalah CORS maupun cookie lintas situs.
+#
+# VPS ini dipakai bersama situs lain. Seluruh aturan di bawah berada
+# di dalam <VirtualHost> dengan ServerName tertentu, sehingga hanya
+# berlaku untuk domain desa dan tidak menyentuh situs tetangga.
 # ─────────────────────────────────────────────────────────────
 
 <VirtualHost *:80>
@@ -37,12 +40,12 @@
 
     # ── Teruskan API ke Express ──
     ProxyPreserveHost On
-    ProxyPass        /api  http://127.0.0.1:4000/api  retry=0
-    ProxyPassReverse /api  http://127.0.0.1:4000/api
+    ProxyPass        /api  http://127.0.0.1:{{API_PORT}}/api  retry=0
+    ProxyPassReverse /api  http://127.0.0.1:{{API_PORT}}/api
 
     # Berkas unggahan (lampiran surat, foto pengaduan, bukti bayar)
-    ProxyPass        /uploads  http://127.0.0.1:4000/uploads  retry=0
-    ProxyPassReverse /uploads  http://127.0.0.1:4000/uploads
+    ProxyPass        /uploads  http://127.0.0.1:{{API_PORT}}/uploads  retry=0
+    ProxyPassReverse /uploads  http://127.0.0.1:{{API_PORT}}/uploads
 
     # Alamat IP asli pengunjung diteruskan ke Express, supaya audit log
     # dan rate limit tidak mencatat 127.0.0.1 untuk semua orang.

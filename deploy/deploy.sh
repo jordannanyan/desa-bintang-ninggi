@@ -18,10 +18,12 @@ APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$APP_DIR"
 
 LEWATI_PULL=0
+LEWATI_RESTART=0
 DENGAN_SEED=0
 for arg in "$@"; do
   case "$arg" in
     --lewati-pull) LEWATI_PULL=1 ;;
+    --lewati-restart) LEWATI_RESTART=1 ;;
     --dengan-seed) DENGAN_SEED=1 ;;
     *) echo "Opsi tidak dikenal: $arg" >&2; exit 1 ;;
   esac
@@ -29,6 +31,12 @@ done
 
 biru()  { printf '\033[1;34m%s\033[0m\n' "$*"; }
 hijau() { printf '\033[1;32m%s\033[0m\n' "$*"; }
+
+# Skrip ini dipanggil dua cara: langsung oleh pengguna biasa (butuh sudo untuk
+# systemctl), dan dari setup-vps.sh yang sudah berjalan sebagai root. Tanpa
+# pembedaan ini, pemanggilan kedua akan berhenti meminta kata sandi di tengah
+# proses penyiapan.
+if [[ $EUID -eq 0 ]]; then SUDO=""; else SUDO="sudo"; fi
 
 if [[ ! -f apps/api/.env ]]; then
   echo "apps/api/.env belum ada. Jalankan dulu: sudo bash deploy/setup-vps.sh" >&2
@@ -67,16 +75,24 @@ npm run build --workspace=@desa/api
 npm run build --workspace=@desa/web
 
 # ── 5. Nyalakan ulang ────────────────────────────────────────
+# Dilewati saat dipanggil setup-vps.sh: build dijalankan sebagai pengguna biasa
+# (supaya berkas hasil build dimiliki pengguna yang menjalankan layanan),
+# sedangkan systemctl dijalankan setup-vps.sh sendiri yang sudah root.
+if [[ $LEWATI_RESTART -eq 1 ]]; then
+  hijau "Build selesai. Layanan dinyalakan oleh setup-vps.sh."
+  exit 0
+fi
+
 biru "== Menyalakan ulang layanan =="
 if systemctl list-unit-files | grep -q '^desa-api.service'; then
-  sudo systemctl restart desa-api
+  $SUDO systemctl restart desa-api
   sleep 2
   systemctl is-active --quiet desa-api \
     && hijau "API berjalan." \
     || { echo "API gagal jalan. Lihat: sudo journalctl -u desa-api -n 50" >&2; exit 1; }
 fi
 
-sudo systemctl reload apache2 2>/dev/null || true
+$SUDO systemctl reload apache2 2>/dev/null || true
 
 echo
 hijau "Deploy selesai — $(git rev-parse --short HEAD 2>/dev/null || echo 'tanpa git')"

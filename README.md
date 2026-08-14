@@ -92,14 +92,21 @@ dikonfirmasi ke pihak desa.
 
 ## Deploy ke VPS
 
+Alamat: **http://desa-bintang-ninggi.webdevpky.site** · VPS `103.150.101.67`
+
 Panduan lengkap: **[PANDUAN-DEPLOY.md](PANDUAN-DEPLOY.md)**
 
-Ringkasnya — penyiapan pertama sekali saja:
+> VPS ini dipakai bersama situs lain. Skrip di `deploy/` ditulis agar tidak
+> menyentuh situs tetangga — baca bagian pertama panduannya sebelum menjalankan.
+
+Penyiapan pertama, sekali saja:
 
 ```bash
 git clone <repo> /var/www/desa-bintang-ninggi
 cd /var/www/desa-bintang-ninggi
-sudo bash deploy/setup-vps.sh      # hanya menanyakan domain yang Anda mau
+sudo bash deploy/cek-server.sh     # periksa dulu, tidak mengubah apa pun
+sudo bash deploy/setup-vps.sh      # tekan Enter untuk memakai domain bawaan
+sudo bash deploy/pasang-https.sh desa-bintang-ninggi.webdevpky.site
 ```
 
 Setiap kali ada perubahan kode:

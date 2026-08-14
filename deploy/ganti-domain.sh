@@ -39,9 +39,14 @@ SKEMA="http"
 
 echo "Mengganti alamat menjadi ${SKEMA}://${DOMAIN}"
 
-# 1. Virtual host
-sed -e "s|{{DOMAIN}}|${DOMAIN}|g" -e "s|{{APP_DIR}}|${APP_DIR}|g" \
-  "${APP_DIR}/deploy/apache/desa.conf.template" > "$VHOST"
+# 1. Virtual host — port API diambil dari .env agar tidak berubah tanpa sengaja.
+API_PORT=$(grep -E '^PORT=' "$ENV_FILE" | cut -d= -f2 | tr -d '[:space:]')
+API_PORT="${API_PORT:-4000}"
+
+sed -e "s|{{DOMAIN}}|${DOMAIN}|g" \
+    -e "s|{{APP_DIR}}|${APP_DIR}|g" \
+    -e "s|{{API_PORT}}|${API_PORT}|g" \
+    "${APP_DIR}/deploy/apache/desa.conf.template" > "$VHOST"
 
 # 2 & 3. Berkas .env
 sed -i \

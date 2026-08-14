@@ -29,7 +29,21 @@ read -rp "Email untuk pemberitahuan masa berlaku sertifikat: " EMAIL
 apt-get update -qq
 apt-get install -y certbot python3-certbot-apache
 
-certbot --apache -d "$DOMAIN" -d "www.${DOMAIN}" \
+# www.<domain> hanya diikutkan bila DNS-nya benar-benar ada. Meminta sertifikat
+# untuk nama yang tidak terselesaikan membuat seluruh permintaan GAGAL, termasuk
+# untuk domain utamanya. Pada subdomain seperti desa-bintang-ninggi.webdevpky.site,
+# varian www hampir pasti tidak ada.
+DOMAIN_ARGS=(-d "$DOMAIN")
+if getent hosts "www.${DOMAIN}" >/dev/null 2>&1; then
+  DOMAIN_ARGS+=(-d "www.${DOMAIN}")
+  echo "www.${DOMAIN} juga terdaftar, ikut disertakan."
+else
+  echo "www.${DOMAIN} tidak ada di DNS — dilewati."
+fi
+
+# --apache menambahkan vhost SSL baru untuk domain ini saja. Sertifikat milik
+# situs lain di server ini tidak disentuh.
+certbot --apache "${DOMAIN_ARGS[@]}" \
   --agree-tos -m "$EMAIL" --redirect --non-interactive
 
 # Alamat di .env ikut berubah ke https, termasuk yang ditulis ke QR surat.
