@@ -90,7 +90,11 @@ export function ProfilDesa() {
           </Bagian>
         )}
 
-        {(profil?.visi || profil?.misi?.length) && (
+        {/* Penjagaan pada `profil` dulu, baru isinya. Bentuk sebelumnya
+            (`profil?.visi || profil?.misi?.length`) bernilai angka 0 ketika
+            visi kosong dan misi berupa array kosong — dan React mencetak
+            angka 0 itu sebagai teks di tengah halaman. */}
+        {profil && (profil.visi || profil.misi?.length ? (
           <Bagian judul="Visi & Misi">
             {profil.visi && (
               <>
@@ -111,7 +115,7 @@ export function ProfilDesa() {
               </>
             ) : null}
           </Bagian>
-        )}
+        ) : null)}
 
         <Bagian judul="Perangkat Desa">
           {perangkat?.length ? (

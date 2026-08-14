@@ -94,7 +94,10 @@ export async function unduhBerkas(url: string, namaBerkas: string): Promise<void
   tautan.click();
   tautan.remove();
 
-  URL.revokeObjectURL(objectUrl);
+  // Object URL tidak boleh dicabut tepat setelah click(): pada Firefox dan
+  // Safari unduhan belum sempat mulai, dan berkasnya batal tersimpan tanpa
+  // pesan apa pun. Beri jeda sebelum melepas memorinya.
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
 }
 
 /** Mengambil pesan yang layak ditampilkan dari error API. */

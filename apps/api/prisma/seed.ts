@@ -19,8 +19,9 @@ async function main() {
       kecamatan: 'Teweh Selatan',
       kabupaten: 'Barito Utara',
       provinsi: 'Kalimantan Tengah',
-      visi: 'TODO: isi visi desa',
-      sambutanKades: 'TODO: isi sambutan kepala desa',
+      // Sengaja dibiarkan kosong, bukan diisi teks "TODO". Nilai bawaan yang
+      // berisi teks akan langsung tampil di halaman depan yang dibuka warga;
+      // dibiarkan null, tampilannya justru mengajak perangkat desa mengisinya.
       jamPelayanan: {
         senin_kamis: '08.00 - 15.00 WIB',
         jumat: '08.00 - 11.00 WIB',

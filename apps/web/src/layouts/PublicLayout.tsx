@@ -1,4 +1,5 @@
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { SECTIONS } from '@desa/shared';
 import { useAuth } from '../lib/auth';
 
@@ -8,6 +9,22 @@ const MENU_UTAMA = ['profil', 'pemerintahan', 'layanan', 'kependudukan', 'keuang
 export function PublicLayout() {
   const menu = SECTIONS.filter((s) => MENU_UTAMA.includes(s.id));
   const { pengguna } = useAuth();
+  const [menuTerbuka, setMenuTerbuka] = useState(false);
+  const lokasi = useLocation();
+
+  // Menu ditutup setiap berpindah halaman. Tanpa ini, menu tetap terbuka
+  // menutupi halaman baru setelah pengunjung menekan salah satu tautannya.
+  useEffect(() => setMenuTerbuka(false), [lokasi.pathname]);
+
+  const tautanAkun = pengguna ? (
+    <Link to={pengguna.peran === 'WARGA' ? '/warga' : '/admin'} className="tombol-utama">
+      {pengguna.nama ?? 'Akun saya'}
+    </Link>
+  ) : (
+    <Link to="/masuk" className="tombol-utama">
+      Masuk
+    </Link>
+  );
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -38,19 +55,75 @@ export function PublicLayout() {
             ))}
           </nav>
 
-          {pengguna ? (
-            <Link
-              to={pengguna.peran === 'WARGA' ? '/warga' : '/admin'}
-              className="tombol-utama"
+          <div className="flex items-center gap-2">
+            <div className="hidden sm:block">{tautanAkun}</div>
+
+            {/* Mayoritas warga membuka situs ini dari ponsel, dan di lebar itu
+                menu utama disembunyikan. Tanpa tombol ini mereka hanya bisa
+                berpindah halaman lewat peta situs di kaki halaman. */}
+            <button
+              type="button"
+              onClick={() => setMenuTerbuka((v) => !v)}
+              aria-expanded={menuTerbuka}
+              aria-controls="menu-ponsel"
+              aria-label={menuTerbuka ? 'Tutup menu' : 'Buka menu'}
+              className="grid h-10 w-10 place-items-center rounded-lg border border-slate-300 text-slate-700 lg:hidden"
             >
-              {pengguna.nama ?? 'Akun saya'}
-            </Link>
-          ) : (
-            <Link to="/masuk" className="tombol-utama">
-              Masuk
-            </Link>
-          )}
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                {menuTerbuka ? (
+                  <path
+                    d="M5 5l10 10M15 5L5 15"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                  />
+                ) : (
+                  <path
+                    d="M3 6h14M3 10h14M3 14h14"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                  />
+                )}
+              </svg>
+            </button>
+          </div>
         </div>
+
+        {menuTerbuka && (
+          <nav
+            id="menu-ponsel"
+            className="border-t border-slate-200 bg-white lg:hidden"
+          >
+            <div className="kontainer py-3">
+              <ul className="space-y-1">
+                {menu.map((s) => (
+                  <li key={s.id}>
+                    <NavLink
+                      to={s.route}
+                      className={({ isActive }) =>
+                        `block rounded-md px-3 py-2.5 text-sm font-medium ${
+                          isActive ? 'bg-desa-50 text-desa-700' : 'text-slate-700'
+                        }`
+                      }
+                    >
+                      {s.title}
+                    </NavLink>
+                  </li>
+                ))}
+                <li>
+                  <Link
+                    to="/verifikasi"
+                    className="block rounded-md px-3 py-2.5 text-sm font-medium text-slate-700"
+                  >
+                    Verifikasi Surat
+                  </Link>
+                </li>
+              </ul>
+              <div className="mt-3 border-t border-slate-100 pt-3 sm:hidden">{tautanAkun}</div>
+            </div>
+          </nav>
+        )}
       </header>
 
       <main className="flex-1">

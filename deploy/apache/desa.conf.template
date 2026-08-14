@@ -22,6 +22,19 @@
 
     DocumentRoot {{APP_DIR}}/apps/web/dist
 
+    # ── Paksa HTTPS, tapi hanya bila sertifikatnya benar-benar sudah ada ──
+    # <IfFile> membuat blok ini mati sendiri pada pemasangan baru yang belum
+    # punya sertifikat. Tanpa penjaga itu, situs akan mengalihkan ke HTTPS
+    # yang belum tersedia dan tidak bisa dibuka sama sekali.
+    #
+    # RewriteCond %{HTTPS} mencegah pengalihan berulang: certbot membuat vhost
+    # HTTPS dengan menyalin berkas ini, dan salinannya ikut memuat aturan ini.
+    <IfFile /etc/letsencrypt/live/{{DOMAIN}}/fullchain.pem>
+        RewriteEngine On
+        RewriteCond %{HTTPS} !=on
+        RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [END,NE,R=permanent]
+    </IfFile>
+
     <Directory {{APP_DIR}}/apps/web/dist>
         Options -Indexes +FollowSymLinks
         AllowOverride None
@@ -78,6 +91,12 @@
     Header always set X-Content-Type-Options "nosniff"
     Header always set X-Frame-Options "SAMEORIGIN"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+    # HSTS hanya dikirim lewat koneksi HTTPS (env=HTTPS diisi mod_ssl).
+    # Mengirimnya lewat HTTP tidak ada gunanya dan diabaikan peramban.
+    # 180 hari, tanpa includeSubDomains: janji ini sulit ditarik kembali,
+    # jadi cakupannya dibatasi pada nama host ini saja.
+    Header always set Strict-Transport-Security "max-age=15552000" env=HTTPS
 
     ErrorLog  ${APACHE_LOG_DIR}/desa-error.log
     CustomLog ${APACHE_LOG_DIR}/desa-access.log combined

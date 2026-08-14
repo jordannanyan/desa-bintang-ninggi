@@ -50,16 +50,23 @@ const HALAMAN_ASLI: Record<string, JSX.Element> = {
  * dengan komponen asli begitu halaman itu digarap.
  */
 
-const rutePublik = SECTIONS
-  .filter((s) => s.route !== '/')
-  .flatMap((section) => [
-    { path: section.route, element: HALAMAN_ASLI[section.route] ?? dariSection(section) },
-    // Sub-halaman yang punya path sendiri, mis. /profil/sejarah
-    ...section.items
-      .filter((item) => item.path)
-      .map((item) => ({
-        path: `${section.route}${item.path}`.replace('//', '/'),
-        element: (
+const rutePublik = SECTIONS.flatMap((section) => {
+  // Beranda ditangani terpisah sebagai rute index, jadi rute sectionnya
+  // tidak dibangkitkan di sini. Sub-halamannya TETAP harus dibangkitkan:
+  // /berita, /pengumuman, dan /agenda berasal dari sana, dan sempat hilang
+  // karena seluruh section beranda ikut tersaring keluar.
+  const ruteSection =
+    section.route === '/'
+      ? []
+      : [{ path: section.route, element: HALAMAN_ASLI[section.route] ?? dariSection(section) }];
+
+  const ruteSubHalaman = section.items
+    .filter((item) => item.path)
+    .map((item) => {
+      const rute = `${section.route}${item.path}`.replace('//', '/');
+      return {
+        path: rute,
+        element: HALAMAN_ASLI[rute] ?? (
           <HalamanPlaceholder
             judul={`${section.title} — ${item.label}`}
             ringkasan={item.note ?? `Sub-halaman dari ${section.title}.`}
@@ -68,8 +75,11 @@ const rutePublik = SECTIONS
             route={section.route}
           />
         ),
-      })),
-  ]);
+      };
+    });
+
+  return [...ruteSection, ...ruteSubHalaman];
+});
 
 /**
  * Dashboard dibungkus RuteTerproteksi: tamu diarahkan ke halaman login yang
