@@ -5,12 +5,10 @@
 #
 #   cd /var/www/desa-bintang-ninggi && bash deploy/deploy.sh
 #
-# Urutannya: git pull -> pasang dependensi -> migrasi database ->
-# build API dan frontend -> nyalakan ulang layanan.
-#
 # Opsi:
-#   --lewati-pull    lewati git pull (dipakai setup-vps.sh saat pertama kali)
-#   --dengan-seed    jalankan seed data awal setelah migrasi
+#   --lewati-pull      lewati git pull (dipakai setup-vps.sh saat pertama kali)
+#   --lewati-restart   hanya build, tanpa systemctl (setup-vps.sh yang menangani)
+#   --dengan-seed      isi data awal setelah migrasi
 
 set -euo pipefail
 
@@ -43,22 +41,30 @@ if [[ ! -f apps/api/.env ]]; then
   exit 1
 fi
 
-# ── 1. Ambil kode terbaru ────────────────────────────────────
+# ---- 1. Ambil kode terbaru ----------------------------------
 if [[ $LEWATI_PULL -eq 0 ]]; then
   biru "== Mengambil kode terbaru =="
   git pull --ff-only
 fi
 
-# ── 2. Dependensi ────────────────────────────────────────────
+# ---- 2. Dependensi ------------------------------------------
 biru "== Memasang dependensi =="
 # `npm ci` memakai package-lock.json apa adanya, sehingga versi di server
 # persis sama dengan yang diuji di komputer. Lebih cepat dan lebih terduga
 # daripada `npm install`.
 npm ci
 
-# ── 3. Database ──────────────────────────────────────────────
+# ---- 3. Siapkan yang dibutuhkan langkah berikutnya -----------
+# HARUS sebelum migrasi dan seed. Berkas seed mengimpor @desa/shared dan
+# memakai Prisma Client; keduanya belum ada sampai langkah ini dijalankan.
+# Menaruhnya setelah seed membuat seed gagal dengan ERR_MODULE_NOT_FOUND.
+biru "== Menyiapkan paket bersama dan Prisma Client =="
+npm run build --workspace=@desa/shared
+npm run db:generate --workspace=@desa/api
+
+# ---- 4. Database --------------------------------------------
 biru "== Menerapkan migrasi database =="
-# `migrate deploy` hanya menerapkan migrasi yang sudah ada — tidak pernah
+# `migrate deploy` hanya menerapkan migrasi yang sudah ada - tidak pernah
 # membuat migrasi baru dan tidak pernah menghapus data. Aman di produksi.
 npm run db:deploy --workspace=@desa/api
 
@@ -67,14 +73,12 @@ if [[ $DENGAN_SEED -eq 1 ]]; then
   npm run db:seed --workspace=@desa/api
 fi
 
-# ── 4. Build ─────────────────────────────────────────────────
+# ---- 5. Build aplikasi --------------------------------------
 biru "== Membangun aplikasi =="
-npm run build --workspace=@desa/shared
-npm run db:generate --workspace=@desa/api
 npm run build --workspace=@desa/api
 npm run build --workspace=@desa/web
 
-# ── 5. Nyalakan ulang ────────────────────────────────────────
+# ---- 6. Nyalakan ulang --------------------------------------
 # Dilewati saat dipanggil setup-vps.sh: build dijalankan sebagai pengguna biasa
 # (supaya berkas hasil build dimiliki pengguna yang menjalankan layanan),
 # sedangkan systemctl dijalankan setup-vps.sh sendiri yang sudah root.
@@ -95,4 +99,4 @@ fi
 $SUDO systemctl reload apache2 2>/dev/null || true
 
 echo
-hijau "Deploy selesai — $(git rev-parse --short HEAD 2>/dev/null || echo 'tanpa git')"
+hijau "Deploy selesai - $(git rev-parse --short HEAD 2>/dev/null || echo 'tanpa git')"
