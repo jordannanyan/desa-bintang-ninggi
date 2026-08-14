@@ -52,7 +52,9 @@ if command -v apache2ctl >/dev/null; then
   echo "  Situs yang aktif sekarang:"
   for s in /etc/apache2/sites-enabled/*.conf; do
     [[ -e "$s" ]] || continue
-    NAMA=$(grep -m1 -i 'ServerName' "$s" 2>/dev/null | awk '{print $2}')
+    # Pola dijangkarkan ke awal baris supaya komentar yang menyebut
+    # "ServerName" tidak ikut terbaca sebagai nama domain.
+    NAMA=$(grep -m1 -E '^[[:space:]]*ServerName[[:space:]]' "$s" 2>/dev/null | awk '{print $2}')
     echo "    - $(basename "$s")${NAMA:+  (${NAMA})}"
   done
 

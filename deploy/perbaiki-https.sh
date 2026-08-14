@@ -9,6 +9,9 @@
 #   - header HSTS belum dikirim
 #   - WEB_ORIGIN / PUBLIC_BASE_URL di .env masih http://
 #
+# Domain dibaca dari ServerName di vhost, atau disebutkan langsung:
+#   sudo bash deploy/perbaiki-https.sh desa-bintang-ninggi.webdevpky.site
+#
 # Aman dijalankan berulang kali; tidak menyentuh sertifikat maupun situs lain.
 
 set -euo pipefail
@@ -23,8 +26,20 @@ kuning() { printf '\033[1;33m%s\033[0m\n' "$*"; }
 
 [[ $EUID -eq 0 ]] || { echo "Jalankan dengan sudo." >&2; exit 1; }
 
-DOMAIN=$(grep -m1 -i 'ServerName' "$VHOST_HTTP" | awk '{print $2}')
-[[ -n "$DOMAIN" ]] || { echo "ServerName tidak ditemukan di ${VHOST_HTTP}" >&2; exit 1; }
+# Pola dijangkarkan ke awal baris. Tanpa jangkar, `grep -i ServerName` juga
+# cocok dengan baris komentar yang kebetulan menyebut kata itu, dan awk
+# mengambil kata kedua dari komentar tersebut sebagai "domain".
+DOMAIN="${1:-}"
+if [[ -z "$DOMAIN" ]]; then
+  DOMAIN=$(grep -m1 -E '^[[:space:]]*ServerName[[:space:]]' "$VHOST_HTTP" | awk '{print $2}')
+fi
+DOMAIN="${DOMAIN#http://}"; DOMAIN="${DOMAIN#https://}"; DOMAIN="${DOMAIN%%/*}"
+
+if [[ -z "$DOMAIN" ]]; then
+  echo "Direktif ServerName tidak ditemukan di ${VHOST_HTTP}." >&2
+  echo "Sebutkan domainnya langsung: sudo bash deploy/perbaiki-https.sh <domain>" >&2
+  exit 1
+fi
 biru "Domain: ${DOMAIN}"
 
 if [[ ! -f "/etc/letsencrypt/live/${DOMAIN}/fullchain.pem" ]]; then
@@ -40,7 +55,10 @@ echo
 # bila vhost sudah memuat aturan rewrite sendiri. Karena itu dipasang di sini
 # secara eksplisit, dengan penanda supaya tidak terpasang dua kali.
 biru "== Pengalihan HTTP ke HTTPS =="
-if grep -q 'PENANDA_ALIH_HTTPS' "$VHOST_HTTP"; then
+# Dua sumber aturan ini: template vhost versi baru sudah memuatnya sendiri,
+# dan skrip ini menyisipkannya pada vhost lama yang belum punya. Keduanya
+# dikenali agar tidak terpasang dua kali.
+if grep -q 'IfFile /etc/letsencrypt' "$VHOST_HTTP"; then
   hijau "Sudah terpasang."
 else
   # Disisipkan tepat setelah baris DocumentRoot, di dalam <VirtualHost *:80>.
