@@ -1,11 +1,13 @@
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { SECTIONS } from '@desa/shared';
+import { useAuth } from '../lib/auth';
 
 /** Menu utama dibatasi agar tidak kepanjangan; sisanya masuk ke footer sitemap. */
 const MENU_UTAMA = ['profil', 'pemerintahan', 'layanan', 'kependudukan', 'keuangan', 'pengaduan', 'umkm'];
 
 export function PublicLayout() {
   const menu = SECTIONS.filter((s) => MENU_UTAMA.includes(s.id));
+  const { pengguna } = useAuth();
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -36,9 +38,18 @@ export function PublicLayout() {
             ))}
           </nav>
 
-          <Link to="/masuk" className="tombol-utama">
-            Masuk
-          </Link>
+          {pengguna ? (
+            <Link
+              to={pengguna.peran === 'WARGA' ? '/warga' : '/admin'}
+              className="tombol-utama"
+            >
+              {pengguna.nama ?? 'Akun saya'}
+            </Link>
+          ) : (
+            <Link to="/masuk" className="tombol-utama">
+              Masuk
+            </Link>
+          )}
         </div>
       </header>
 

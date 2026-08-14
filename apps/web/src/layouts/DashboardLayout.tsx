@@ -1,5 +1,6 @@
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import type { SectionItem } from '@desa/shared';
+import { useAuth } from '../lib/auth';
 
 interface Props {
   judul: string;
@@ -9,6 +10,14 @@ interface Props {
 
 /** Kerangka dashboard, dipakai bersama oleh Perangkat Desa dan Warga. */
 export function DashboardLayout({ judul, basis, menu }: Props) {
+  const { pengguna, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const keluar = async () => {
+    await logout();
+    navigate('/', { replace: true });
+  };
+
   return (
     <div className="flex min-h-screen bg-slate-100">
       <aside className="hidden w-64 shrink-0 border-r border-slate-200 bg-white lg:block">
@@ -40,9 +49,16 @@ export function DashboardLayout({ judul, basis, menu }: Props) {
       <div className="flex-1">
         <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-6">
           <span className="text-sm font-semibold text-slate-700">{judul}</span>
-          <button type="button" className="tombol-sekunder text-xs">
-            Keluar
-          </button>
+          <div className="flex items-center gap-3">
+            {pengguna && (
+              <span className="text-xs text-slate-500">
+                {pengguna.nama} &middot; {pengguna.peran.toLowerCase()}
+              </span>
+            )}
+            <button type="button" onClick={keluar} className="tombol-sekunder text-xs">
+              Keluar
+            </button>
+          </div>
         </header>
         <main className="p-6">
           <Outlet />

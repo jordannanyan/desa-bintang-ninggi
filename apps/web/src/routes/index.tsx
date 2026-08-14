@@ -1,10 +1,12 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
-import { DASHBOARD_PERANGKAT, DASHBOARD_WARGA, SECTIONS } from '@desa/shared';
+import { DASHBOARD_PERANGKAT, DASHBOARD_WARGA, SECTIONS, type Peran } from '@desa/shared';
 import { PublicLayout } from '../layouts/PublicLayout';
 import { DashboardLayout } from '../layouts/DashboardLayout';
 import { HalamanPlaceholder, dariSection } from '../components/HalamanPlaceholder';
+import { RuteTerproteksi } from '../components/RuteTerproteksi';
 import { Beranda } from '../pages/Beranda';
 import { Masuk } from '../pages/Masuk';
+import { MasukPerangkat } from '../pages/MasukPerangkat';
 
 /**
  * Seluruh rute dibangkitkan dari registry SECTIONS di @desa/shared.
@@ -35,10 +37,26 @@ const rutePublik = SECTIONS
       })),
   ]);
 
-const ruteDashboard = (dash: typeof DASHBOARD_PERANGKAT | typeof DASHBOARD_WARGA) => ({
+/**
+ * Dashboard dibungkus RuteTerproteksi: tamu diarahkan ke halaman login yang
+ * sesuai, dan warga tidak bisa membuka dashboard perangkat sekadar dengan
+ * mengetik alamatnya. Penjagaan sebenarnya tetap di backend.
+ */
+const ruteDashboard = (
+  dash: typeof DASHBOARD_PERANGKAT | typeof DASHBOARD_WARGA,
+  penjaga: { peran: Peran[]; halamanMasuk: string },
+) => ({
   path: dash.route,
-  element: <DashboardLayout judul={dash.title} basis={dash.route} menu={dash.items} />,
+  element: <RuteTerproteksi peran={penjaga.peran} halamanMasuk={penjaga.halamanMasuk} />,
   children: [
+    {
+      element: <DashboardLayout judul={dash.title} basis={dash.route} menu={dash.items} />,
+      children: ruteIsiDashboard(dash),
+    },
+  ],
+});
+
+const ruteIsiDashboard = (dash: typeof DASHBOARD_PERANGKAT | typeof DASHBOARD_WARGA) => [
     {
       index: true,
       element: (
@@ -65,8 +83,7 @@ const ruteDashboard = (dash: typeof DASHBOARD_PERANGKAT | typeof DASHBOARD_WARGA
           />
         ),
       })),
-  ],
-});
+];
 
 export const router = createBrowserRouter([
   {
@@ -87,23 +104,17 @@ export const router = createBrowserRouter([
           />
         ),
       },
-      {
-        path: 'masuk-perangkat',
-        element: (
-          <HalamanPlaceholder
-            judul="Masuk Perangkat Desa"
-            ringkasan="Login khusus perangkat desa dengan username dan password."
-            fase={1}
-            items={[]}
-            route="/masuk-perangkat"
-          />
-        ),
-      },
+      { path: 'masuk-perangkat', element: <MasukPerangkat /> },
       ...rutePublik,
       { path: '*', element: <Navigate to="/" replace /> },
     ],
   },
-  // TODO: bungkus kedua dashboard dengan <RutTerproteksi peran="..."> saat auth siap.
-  ruteDashboard(DASHBOARD_PERANGKAT),
-  ruteDashboard(DASHBOARD_WARGA),
+  ruteDashboard(DASHBOARD_PERANGKAT, {
+    peran: ['PERANGKAT', 'ADMIN'],
+    halamanMasuk: '/masuk-perangkat',
+  }),
+  ruteDashboard(DASHBOARD_WARGA, {
+    peran: ['WARGA', 'PERANGKAT', 'ADMIN'],
+    halamanMasuk: '/masuk',
+  }),
 ]);

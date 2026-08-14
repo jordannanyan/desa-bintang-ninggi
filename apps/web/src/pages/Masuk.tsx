@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { loginWargaSchema, type LoginWargaInput } from '@desa/shared';
+import { useAuth } from '../lib/auth';
+import { pesanError } from '../lib/api';
 
 /**
  * Login warga: NIK + PIN.
@@ -10,15 +13,30 @@ import { loginWargaSchema, type LoginWargaInput } from '@desa/shared';
  * warga sendiri saat aktivasi akun (kode aktivasi diberikan perangkat desa).
  */
 export function Masuk() {
+  const { loginWarga } = useAuth();
+  const navigate = useNavigate();
+  const lokasi = useLocation();
+  const [galat, setGalat] = useState<string | null>(null);
+
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<LoginWargaInput>({ resolver: zodResolver(loginWargaSchema) });
 
-  const onSubmit = async (_data: LoginWargaInput) => {
-    // TODO: POST /api/auth/login lalu simpanToken(res.data.accessToken)
+  const onSubmit = async (data: LoginWargaInput) => {
+    setGalat(null);
+    try {
+      await loginWarga(data.nik, data.pin);
+      const tujuan = (lokasi.state as { dari?: string } | null)?.dari ?? '/warga';
+      navigate(tujuan, { replace: true });
+    } catch (err) {
+      setGalat(pesanError(err, 'Tidak dapat masuk. Coba lagi.'));
+    }
   };
+
+  const gayaInput =
+    'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm tracking-widest focus:border-desa-500 focus:outline-none focus:ring-1 focus:ring-desa-500';
 
   return (
     <div className="kontainer grid min-h-[70vh] place-items-center py-12">
@@ -28,7 +46,16 @@ export function Masuk() {
           Gunakan NIK dan PIN yang Anda buat saat aktivasi akun.
         </p>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="kartu space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="kartu space-y-4" noValidate>
+          {galat && (
+            <div
+              role="alert"
+              className="rounded-lg border-l-4 border-red-500 bg-red-50 px-3 py-2 text-sm text-red-800"
+            >
+              {galat}
+            </div>
+          )}
+
           <div>
             <label htmlFor="nik" className="mb-1 block text-sm font-medium text-slate-700">
               NIK
@@ -38,8 +65,9 @@ export function Masuk() {
               inputMode="numeric"
               maxLength={16}
               autoComplete="username"
+              placeholder="16 digit NIK"
               {...register('nik')}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-desa-500 focus:outline-none focus:ring-1 focus:ring-desa-500"
+              className={gayaInput}
             />
             {errors.nik && <p className="mt-1 text-xs text-red-600">{errors.nik.message}</p>}
           </div>
@@ -54,14 +82,15 @@ export function Masuk() {
               inputMode="numeric"
               maxLength={6}
               autoComplete="current-password"
+              placeholder="6 digit PIN"
               {...register('pin')}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-desa-500 focus:outline-none focus:ring-1 focus:ring-desa-500"
+              className={gayaInput}
             />
             {errors.pin && <p className="mt-1 text-xs text-red-600">{errors.pin.message}</p>}
           </div>
 
           <button type="submit" disabled={isSubmitting} className="tombol-utama w-full">
-            Masuk
+            {isSubmitting ? 'Memproses…' : 'Masuk'}
           </button>
 
           <p className="text-center text-xs text-slate-500">
