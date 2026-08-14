@@ -17,6 +17,12 @@ import { PendudukImpor } from '../pages/admin/PendudukImpor';
 import { SuratList } from '../pages/admin/SuratList';
 import { SuratDetail } from '../pages/admin/SuratDetail';
 import { SuratSaya } from '../pages/warga/SuratSaya';
+import { ProfilDesa } from '../pages/ProfilDesa';
+import { BeritaList, BeritaDetail } from '../pages/Berita';
+import { Agenda, Pengumuman } from '../pages/PengumumanAgenda';
+import { BeritaKelola } from '../pages/admin/BeritaKelola';
+import { AgendaKelola } from '../pages/admin/AgendaKelola';
+import { ProfilDesaForm } from '../pages/admin/ProfilDesaForm';
 
 /**
  * Halaman yang sudah digarap, menggantikan kerangka yang dibangkitkan registry.
@@ -25,8 +31,14 @@ import { SuratSaya } from '../pages/warga/SuratSaya';
 const HALAMAN_ASLI: Record<string, JSX.Element> = {
   '/kependudukan': <Kependudukan />,
   '/layanan': <Layanan />,
+  '/profil': <ProfilDesa />,
+  '/berita': <BeritaList />,
+  '/pengumuman': <Pengumuman />,
+  '/agenda': <Agenda />,
   '/admin/penduduk': <PendudukList />,
   '/admin/surat': <SuratList />,
+  '/admin/berita': <BeritaKelola />,
+  '/admin/agenda': <AgendaKelola />,
   '/warga/surat': <SuratSaya />,
 };
 
@@ -113,6 +125,7 @@ const ruteIsiDashboard = (dash: typeof DASHBOARD_PERANGKAT | typeof DASHBOARD_WA
           { path: 'penduduk/baru', element: <PendudukForm /> },
           { path: 'penduduk/:id', element: <PendudukForm /> },
           { path: 'surat/:id', element: <SuratDetail /> },
+          { path: 'profil-desa', element: <ProfilDesaForm /> },
         ]
       : []),
 ];
@@ -145,6 +158,7 @@ export const router = createBrowserRouter([
       { path: 'verifikasi/:kode', element: <Verifikasi /> },
 
       { path: 'layanan/ajukan/:kode', element: <AjukanSurat /> },
+      { path: 'berita/:slug', element: <BeritaDetail /> },
       ...rutePublik,
       { path: '*', element: <Navigate to="/" replace /> },
     ],

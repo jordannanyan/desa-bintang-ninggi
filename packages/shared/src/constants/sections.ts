@@ -555,6 +555,7 @@ export const DASHBOARD_PERANGKAT = {
   phase: 1 as Phase,
   summary: 'Ruang kerja perangkat desa: kelola data, setujui surat, dan perbarui konten.',
   items: [
+    { label: 'Profil desa', path: '/profil-desa' },
     { label: 'Manajemen penduduk', path: '/penduduk' },
     { label: 'Manajemen surat', path: '/surat' },
     { label: 'Persetujuan surat', path: '/surat/persetujuan' },
