@@ -4,6 +4,7 @@ export * from './constants/kependudukan.js';
 export * from './constants/umkm.js';
 export * from './schemas/penduduk.js';
 export * from './schemas/umkm.js';
+export * from './schemas/wilayah.js';
 export * from './schemas/auth.js';
 export * from './schemas/surat.js';
 export * from './schemas/pengaduan.js';

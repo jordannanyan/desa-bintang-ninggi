@@ -1,16 +1,21 @@
 import { Router } from 'express';
 import { authRoutes } from '../modules/auth/auth.routes.js';
 import { suratRoutes } from '../modules/surat/surat.routes.js';
+import { pendudukRoutes, wilayahRoutes } from '../modules/penduduk/penduduk.routes.js';
 import { daftarStub, type PetaEndpoint } from './stub.js';
 
 export const apiRoutes = Router();
 
 // ── Modul yang sudah bertulang ──
 apiRoutes.use('/auth', authRoutes);
+apiRoutes.use('/kependudukan', pendudukRoutes);
+apiRoutes.use('/wilayah', wilayahRoutes);
 apiRoutes.use('/layanan/surat', suratRoutes);
 
 const petaSiap: PetaEndpoint[] = [
   { section: 'Autentikasi', no: 0, fase: 1, basis: '/api/auth', status: 'siap' },
+  { section: 'Data Kependudukan', no: 5, fase: 1, basis: '/api/kependudukan', status: 'siap' },
+  { section: 'Wilayah RT/RW', no: 5, fase: 1, basis: '/api/wilayah', status: 'siap' },
   { section: 'Pelayanan Online', no: 4, fase: 1, basis: '/api/layanan/surat', status: 'siap' },
 ];
 

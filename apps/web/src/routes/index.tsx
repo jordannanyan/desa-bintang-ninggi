@@ -7,6 +7,19 @@ import { RuteTerproteksi } from '../components/RuteTerproteksi';
 import { Beranda } from '../pages/Beranda';
 import { Masuk } from '../pages/Masuk';
 import { MasukPerangkat } from '../pages/MasukPerangkat';
+import { Kependudukan } from '../pages/Kependudukan';
+import { PendudukList } from '../pages/admin/PendudukList';
+import { PendudukForm } from '../pages/admin/PendudukForm';
+import { PendudukImpor } from '../pages/admin/PendudukImpor';
+
+/**
+ * Halaman yang sudah digarap, menggantikan kerangka yang dibangkitkan registry.
+ * Kunci = rute penuh. Menambah halaman asli cukup didaftarkan di sini.
+ */
+const HALAMAN_ASLI: Record<string, JSX.Element> = {
+  '/kependudukan': <Kependudukan />,
+  '/admin/penduduk': <PendudukList />,
+};
 
 /**
  * Seluruh rute dibangkitkan dari registry SECTIONS di @desa/shared.
@@ -19,7 +32,7 @@ import { MasukPerangkat } from '../pages/MasukPerangkat';
 const rutePublik = SECTIONS
   .filter((s) => s.route !== '/')
   .flatMap((section) => [
-    { path: section.route, element: dariSection(section) },
+    { path: section.route, element: HALAMAN_ASLI[section.route] ?? dariSection(section) },
     // Sub-halaman yang punya path sendiri, mis. /profil/sejarah
     ...section.items
       .filter((item) => item.path)
@@ -73,7 +86,7 @@ const ruteIsiDashboard = (dash: typeof DASHBOARD_PERANGKAT | typeof DASHBOARD_WA
       .filter((item) => item.path)
       .map((item) => ({
         path: item.path!.replace(/^\//, ''),
-        element: (
+        element: HALAMAN_ASLI[`${dash.route}${item.path}`] ?? (
           <HalamanPlaceholder
             judul={item.label}
             ringkasan={`Modul ${item.label} pada ${dash.title}.`}
@@ -83,6 +96,15 @@ const ruteIsiDashboard = (dash: typeof DASHBOARD_PERANGKAT | typeof DASHBOARD_WA
           />
         ),
       })),
+
+    // Sub-rute yang tidak berasal dari menu registry.
+    ...(dash.route === '/admin'
+      ? [
+          { path: 'penduduk/impor', element: <PendudukImpor /> },
+          { path: 'penduduk/baru', element: <PendudukForm /> },
+          { path: 'penduduk/:id', element: <PendudukForm /> },
+        ]
+      : []),
 ];
 
 export const router = createBrowserRouter([

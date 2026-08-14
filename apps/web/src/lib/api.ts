@@ -75,6 +75,28 @@ api.interceptors.response.use(
   },
 );
 
+/**
+ * Mengunduh berkas dari endpoint yang butuh login.
+ *
+ * Tautan <a href> biasa tidak bisa dipakai: browser tidak menyertakan header
+ * Authorization pada navigasi biasa, jadi permintaannya akan ditolak 401.
+ * Berkasnya diambil lewat axios (yang menyisipkan token), lalu diserahkan ke
+ * browser sebagai object URL.
+ */
+export async function unduhBerkas(url: string, namaBerkas: string): Promise<void> {
+  const res = await api.get(url, { responseType: 'blob' });
+  const objectUrl = URL.createObjectURL(res.data as Blob);
+
+  const tautan = document.createElement('a');
+  tautan.href = objectUrl;
+  tautan.download = namaBerkas;
+  document.body.appendChild(tautan);
+  tautan.click();
+  tautan.remove();
+
+  URL.revokeObjectURL(objectUrl);
+}
+
 /** Mengambil pesan yang layak ditampilkan dari error API. */
 export function pesanError(err: unknown, bawaan = 'Terjadi kesalahan. Coba lagi.'): string {
   const e = err as AxiosError<{ error?: { message?: string } }>;

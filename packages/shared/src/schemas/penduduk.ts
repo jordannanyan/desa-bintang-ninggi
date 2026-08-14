@@ -51,12 +51,39 @@ export const kartuKeluargaSchema = z.object({
 });
 
 export const filterPendudukSchema = z.object({
+  /** Nama (pencarian sebagian) atau NIK lengkap 16 digit. */
   q: z.string().optional(),
   rtId: z.string().uuid().optional(),
   jenisKelamin: z.enum(['LAKI_LAKI', 'PEREMPUAN']).optional(),
+  /** Bawaannya hanya menampilkan penduduk aktif. */
+  status: z.enum(['AKTIF', 'MENINGGAL', 'PINDAH', 'SEMUA']).default('AKTIF'),
   page: z.coerce.number().int().min(1).default(1),
   perPage: z.coerce.number().int().min(1).max(100).default(25),
 });
+
+/**
+ * Penduduk tidak pernah dihapus permanen.
+ *
+ * Riwayat surat yang pernah terbit atas nama seseorang harus tetap bisa
+ * ditelusuri, jadi yang dilakukan adalah menandai meninggal atau pindah.
+ */
+export const nonaktifkanPendudukSchema = z
+  .object({
+    alasan: z.enum(['MENINGGAL', 'PINDAH']),
+    tanggal: z.coerce.date().max(new Date(), 'Tanggal tidak boleh di masa depan'),
+    keterangan: z.string().max(255).optional(),
+  })
+  .strict();
+
+export type NonaktifkanPendudukInput = z.infer<typeof nonaktifkanPendudukSchema>;
+
+/** Hasil impor CSV, dikembalikan apa adanya agar perangkat desa tahu baris mana yang gagal. */
+export interface HasilImporPenduduk {
+  totalBaris: number;
+  berhasil: number;
+  dilewati: number;
+  gagal: Array<{ baris: number; nama?: string; pesan: string }>;
+}
 
 export const STATUS_PERKAWINAN_LABEL = STATUS_PERKAWINAN;
 export const PEKERJAAN_SARAN = PEKERJAAN;
