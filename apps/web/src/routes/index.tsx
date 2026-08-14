@@ -8,9 +8,15 @@ import { Beranda } from '../pages/Beranda';
 import { Masuk } from '../pages/Masuk';
 import { MasukPerangkat } from '../pages/MasukPerangkat';
 import { Kependudukan } from '../pages/Kependudukan';
+import { Layanan } from '../pages/Layanan';
+import { AjukanSurat } from '../pages/AjukanSurat';
+import { Verifikasi } from '../pages/Verifikasi';
 import { PendudukList } from '../pages/admin/PendudukList';
 import { PendudukForm } from '../pages/admin/PendudukForm';
 import { PendudukImpor } from '../pages/admin/PendudukImpor';
+import { SuratList } from '../pages/admin/SuratList';
+import { SuratDetail } from '../pages/admin/SuratDetail';
+import { SuratSaya } from '../pages/warga/SuratSaya';
 
 /**
  * Halaman yang sudah digarap, menggantikan kerangka yang dibangkitkan registry.
@@ -18,7 +24,10 @@ import { PendudukImpor } from '../pages/admin/PendudukImpor';
  */
 const HALAMAN_ASLI: Record<string, JSX.Element> = {
   '/kependudukan': <Kependudukan />,
+  '/layanan': <Layanan />,
   '/admin/penduduk': <PendudukList />,
+  '/admin/surat': <SuratList />,
+  '/warga/surat': <SuratSaya />,
 };
 
 /**
@@ -103,6 +112,7 @@ const ruteIsiDashboard = (dash: typeof DASHBOARD_PERANGKAT | typeof DASHBOARD_WA
           { path: 'penduduk/impor', element: <PendudukImpor /> },
           { path: 'penduduk/baru', element: <PendudukForm /> },
           { path: 'penduduk/:id', element: <PendudukForm /> },
+          { path: 'surat/:id', element: <SuratDetail /> },
         ]
       : []),
 ];
@@ -127,6 +137,14 @@ export const router = createBrowserRouter([
         ),
       },
       { path: 'masuk-perangkat', element: <MasukPerangkat /> },
+
+      // Verifikasi surat sengaja di akar, bukan di bawah /layanan: alamatnya
+      // ikut tercetak di bawah QR pada lembar surat, jadi harus sependek
+      // mungkin agar tetap terbaca dan mudah diketik ulang bila QR rusak.
+      { path: 'verifikasi', element: <Verifikasi /> },
+      { path: 'verifikasi/:kode', element: <Verifikasi /> },
+
+      { path: 'layanan/ajukan/:kode', element: <AjukanSurat /> },
       ...rutePublik,
       { path: '*', element: <Navigate to="/" replace /> },
     ],

@@ -1,27 +1,140 @@
-import { Router } from 'express';
-import { JENIS_SURAT, ajukanSuratSchema, filterSuratSchema, tinjauSuratSchema } from '@desa/shared';
+import { resolve } from 'node:path';
+import { Router, type NextFunction, type Request, type Response } from 'express';
+import { ajukanSuratSchema, filterSuratSchema, tinjauSuratSchema } from '@desa/shared';
+import { prisma } from '../../lib/prisma.js';
 import { validasi } from '../../middleware/validate.js';
 import { wajibLogin, wajibPeran } from '../../middleware/auth.js';
+import * as surat from './surat.service.js';
 
 export const suratRoutes = Router();
 
-const belum = (apa: string) => (_req: unknown, res: any) =>
-  res.status(501).json({ ok: false, error: { code: 'BELUM_DIIMPLEMENTASI', message: `TODO: ${apa}` } });
+const async_ =
+  (fn: (req: Request, res: Response) => Promise<unknown>) =>
+  (req: Request, res: Response, next: NextFunction) =>
+    fn(req, res).catch(next);
 
-/** Katalog jenis surat + field yang harus diisi — dipakai form dinamis di frontend. */
-suratRoutes.get('/jenis', (_req, res) => {
-  res.json({ ok: true, data: JENIS_SURAT });
-});
+// ── Publik ──
 
-/** Verifikasi QR Code pada surat cetak. Publik, tanpa login. */
-suratRoutes.get('/verifikasi/:kode', belum('verifikasi keaslian surat via hash dokumen'));
+/** Katalog jenis surat beserta field yang harus diisi — form dibangun dari sini. */
+suratRoutes.get(
+  '/jenis',
+  async_(async (_req, res) => {
+    const template = await prisma.templateSurat.findMany({
+      where: { aktif: true },
+      orderBy: { urutan: 'asc' },
+      select: { kode: true, nama: true, fieldTambahan: true, lampiranWajib: true },
+    });
+    res.json({ ok: true, data: template });
+  }),
+);
 
-suratRoutes.post('/', wajibLogin, validasi(ajukanSuratSchema), belum('ajukan surat baru'));
-suratRoutes.get('/saya', wajibLogin, validasi(filterSuratSchema, 'query'), belum('riwayat surat milik warga'));
-suratRoutes.get('/saya/:id', wajibLogin, belum('detail pengajuan milik warga'));
-suratRoutes.get('/saya/:id/pdf', wajibLogin, belum('unduh PDF surat yang sudah disetujui'));
+/**
+ * Verifikasi keaslian surat lewat QR. Tanpa login — tautannya memang ditujukan
+ * untuk siapa pun yang memegang lembar suratnya.
+ */
+suratRoutes.get(
+  '/verifikasi/:kode',
+  async_(async (req, res) => {
+    res.json({ ok: true, data: await surat.verifikasiSurat(req.params.kode) });
+  }),
+);
 
-// ── Sisi perangkat desa ──
-suratRoutes.get('/', wajibLogin, wajibPeran('PERANGKAT', 'ADMIN'), validasi(filterSuratSchema, 'query'), belum('daftar seluruh pengajuan'));
-suratRoutes.patch('/:id/tinjau', wajibLogin, wajibPeran('PERANGKAT', 'ADMIN'), validasi(tinjauSuratSchema), belum('setujui / tolak pengajuan'));
-suratRoutes.post('/:id/terbitkan', wajibLogin, wajibPeran('PERANGKAT', 'ADMIN'), belum('generate PDF + nomor surat + QR'));
+// ── Warga ──
+
+suratRoutes.post(
+  '/',
+  wajibLogin,
+  validasi(ajukanSuratSchema),
+  async_(async (req, res) => {
+    res.status(201).json({ ok: true, data: await surat.ajukanSurat(req, req.body) });
+  }),
+);
+
+suratRoutes.get(
+  '/saya',
+  wajibLogin,
+  validasi(filterSuratSchema, 'query'),
+  async_(async (req, res) => {
+    res.json({ ok: true, ...(await surat.suratSaya(req.user!.sub, res.locals.query)) });
+  }),
+);
+
+suratRoutes.get(
+  '/saya/:id',
+  wajibLogin,
+  async_(async (req, res) => {
+    res.json({ ok: true, data: await surat.detailPengajuan(req, req.params.id, true) });
+  }),
+);
+
+suratRoutes.get(
+  '/saya/:id/pdf',
+  wajibLogin,
+  async_(async (req, res) => {
+    const berkas = await surat.berkasPdf(req, req.params.id, true);
+    res.download(resolve(berkas.path), berkas.nama);
+  }),
+);
+
+// ── Perangkat desa ──
+
+const perangkat = [wajibLogin, wajibPeran('PERANGKAT', 'ADMIN')] as const;
+
+suratRoutes.get(
+  '/',
+  ...perangkat,
+  validasi(filterSuratSchema, 'query'),
+  async_(async (_req, res) => {
+    res.json({ ok: true, ...(await surat.daftarPengajuan(res.locals.query)) });
+  }),
+);
+
+suratRoutes.get(
+  '/:id',
+  ...perangkat,
+  async_(async (req, res) => {
+    res.json({ ok: true, data: await surat.detailPengajuan(req, req.params.id) });
+  }),
+);
+
+suratRoutes.patch(
+  '/:id/tinjau',
+  ...perangkat,
+  validasi(tinjauSuratSchema),
+  async_(async (req, res) => {
+    res.json({ ok: true, data: await surat.tinjauPengajuan(req, req.params.id, req.body) });
+  }),
+);
+
+suratRoutes.post(
+  '/:id/terbitkan',
+  ...perangkat,
+  async_(async (req, res) => {
+    res.json({ ok: true, data: await surat.terbitkanSurat(req, req.params.id) });
+  }),
+);
+
+suratRoutes.get(
+  '/:id/pdf',
+  ...perangkat,
+  async_(async (req, res) => {
+    const berkas = await surat.berkasPdf(req, req.params.id, false);
+    res.download(resolve(berkas.path), berkas.nama);
+  }),
+);
+
+// ── Pengaturan template (admin) ──
+
+suratRoutes.put(
+  '/template/:kode',
+  wajibLogin,
+  wajibPeran('ADMIN'),
+  async_(async (req, res) => {
+    const { isiTemplate, formatNomor, fieldTambahan, lampiranWajib, aktif } = req.body ?? {};
+    const template = await prisma.templateSurat.update({
+      where: { kode: req.params.kode },
+      data: { isiTemplate, formatNomor, fieldTambahan, lampiranWajib, aktif },
+    });
+    res.json({ ok: true, data: { kode: template.kode } });
+  }),
+);

@@ -5,6 +5,7 @@
 import { PrismaClient } from '@prisma/client';
 import argon2 from 'argon2';
 import { JENIS_SURAT } from '@desa/shared';
+import { TEMPLATE_AWAL } from './template-surat.js';
 
 const prisma = new PrismaClient();
 
@@ -65,7 +66,7 @@ async function main() {
       create: {
         kode: jenis.kode,
         nama: jenis.nama,
-        isiTemplate: `TODO: susun isi ${jenis.nama} — placeholder tersedia: {{nama}}, {{nik}}, {{alamat}}, {{keperluan}}`,
+        isiTemplate: TEMPLATE_AWAL[jenis.kode] ?? TEMPLATE_AWAL.LAINNYA,
         // Dikosongkan agar mengikuti format global di tabel `pengaturan`.
         formatNomor: null,
         fieldTambahan: jenis.fieldTambahan,
