@@ -1,0 +1,73 @@
+# ─────────────────────────────────────────────────────────────
+# Virtual host Apache untuk Website Desa Bintang Ninggi I
+#
+# Berkas ini adalah TEMPLATE. Jangan diedit langsung di server —
+# jalankan `sudo bash deploy/setup-vps.sh` yang akan mengisi
+# {{DOMAIN}} dan {{APP_DIR}} lalu menaruh hasilnya di
+# /etc/apache2/sites-available/desa.conf
+#
+# Susunannya:
+#   Apache menyajikan hasil build React sebagai berkas statis, dan
+#   meneruskan /api serta /uploads ke Express di port 4000. Karena
+#   keduanya lewat satu domain, tidak ada masalah CORS maupun cookie
+#   lintas situs.
+# ─────────────────────────────────────────────────────────────
+
+<VirtualHost *:80>
+    ServerName {{DOMAIN}}
+    ServerAdmin webmaster@{{DOMAIN}}
+
+    DocumentRoot {{APP_DIR}}/apps/web/dist
+
+    <Directory {{APP_DIR}}/apps/web/dist>
+        Options -Indexes +FollowSymLinks
+        AllowOverride None
+        Require all granted
+
+        # React Router memakai rute sisi klien: /profil, /layanan, dan
+        # seterusnya tidak punya berkas fisik. Semua permintaan yang tidak
+        # cocok dengan berkas nyata dikembalikan ke index.html agar
+        # aplikasi yang menangani rutenya.
+        RewriteEngine On
+        RewriteCond %{REQUEST_FILENAME} -f [OR]
+        RewriteCond %{REQUEST_FILENAME} -d
+        RewriteRule ^ - [L]
+        RewriteRule ^ index.html [L]
+    </Directory>
+
+    # ── Teruskan API ke Express ──
+    ProxyPreserveHost On
+    ProxyPass        /api  http://127.0.0.1:4000/api  retry=0
+    ProxyPassReverse /api  http://127.0.0.1:4000/api
+
+    # Berkas unggahan (lampiran surat, foto pengaduan, bukti bayar)
+    ProxyPass        /uploads  http://127.0.0.1:4000/uploads  retry=0
+    ProxyPassReverse /uploads  http://127.0.0.1:4000/uploads
+
+    # Alamat IP asli pengunjung diteruskan ke Express, supaya audit log
+    # dan rate limit tidak mencatat 127.0.0.1 untuk semua orang.
+    RequestHeader set X-Forwarded-Proto "http"
+
+    # ── Cache ──
+    # Berkas hasil build Vite bernama unik per rilis (index-a1b2c3.js),
+    # jadi aman di-cache lama. index.html tidak boleh di-cache, agar
+    # pengunjung langsung mendapat versi terbaru setelah deploy.
+    <FilesMatch "\.(js|css|woff2|png|jpg|jpeg|svg|webp)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+    <FilesMatch "index\.html$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+    </FilesMatch>
+
+    # ── Kompresi ──
+    AddOutputFilterByType DEFLATE text/html text/plain text/css application/javascript application/json image/svg+xml
+
+    # ── Pengamanan dasar ──
+    ServerTokens Prod
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+    ErrorLog  ${APACHE_LOG_DIR}/desa-error.log
+    CustomLog ${APACHE_LOG_DIR}/desa-access.log combined
+</VirtualHost>

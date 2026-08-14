@@ -1,0 +1,967 @@
+// Skema database Website Desa Bintang Ninggi I
+//
+// Cakupan file ini: Fase 1 (inti) + Fase 2 (transparansi).
+// Model untuk Fase 3 (ekonomi) dan Fase 4 (pelengkap) ditandai TODO di bagian
+// bawah agar penambahannya tidak mengubah relasi yang sudah ada.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────
+// AKUN & KEAMANAN
+// ─────────────────────────────────────────────────────────────
+
+enum Peran {
+  WARGA
+  PERANGKAT
+  ADMIN
+}
+
+enum StatusAkun {
+  BELUM_AKTIF
+  AKTIF
+  DIBEKUKAN
+}
+
+model User {
+  id        String     @id @default(uuid())
+  peran     Peran
+  status    StatusAkun @default(BELUM_AKTIF)
+
+  /// Diisi untuk peran PERANGKAT/ADMIN.
+  username  String?    @unique
+  /// argon2id — dipakai password (perangkat) maupun PIN (warga).
+  kredensialHash String?
+
+  /// Kode sekali pakai yang diberikan perangkat desa saat mendaftarkan warga.
+  kodeAktivasi   String?
+  kodeExpiredAt  DateTime?
+
+  gagalLogin     Int       @default(0)
+  terkunciSampai DateTime?
+  loginTerakhir  DateTime?
+
+  pendudukId String?   @unique
+  penduduk   Penduduk? @relation(fields: [pendudukId], references: [id], onDelete: SetNull)
+
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]
+  pengajuan     PengajuanSurat[] @relation("PemohonSurat")
+  ditinjau      PengajuanSurat[] @relation("PeninjauSurat")
+  pengaduan     Pengaduan[]
+  umkm          Umkm[]
+  pesanan       Pesanan[]
+  ulasan        Ulasan[]
+
+  dibuatPada    DateTime @default(now())
+  diperbaruiPada DateTime @updatedAt
+
+  @@index([peran, status])
+  @@map("users")
+}
+
+model RefreshToken {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String   @unique
+  expiredAt  DateTime
+  dicabutPada DateTime?
+  userAgent  String?  @db.VarChar(255)
+  ip         String?  @db.VarChar(45)
+  dibuatPada DateTime @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+/// Jejak akses data pribadi — kewajiban UU PDP No. 27/2022.
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  aksi      String   @db.VarChar(64)  // LIHAT_PENDUDUK, UBAH_PENDUDUK, EKSPOR_DATA, ...
+  entitas   String   @db.VarChar(64)
+  entitasId String?  @db.VarChar(64)
+  ip        String?  @db.VarChar(45)
+  detail    Json?
+  dibuatPada DateTime @default(now())
+
+  @@index([entitas, entitasId])
+  @@index([userId, dibuatPada])
+  @@map("audit_logs")
+}
+
+// ─────────────────────────────────────────────────────────────
+// KEPENDUDUKAN
+// ─────────────────────────────────────────────────────────────
+
+enum JenisKelamin {
+  LAKI_LAKI
+  PEREMPUAN
+}
+
+enum StatusKawin {
+  BELUM_KAWIN
+  KAWIN
+  CERAI_HIDUP
+  CERAI_MATI
+}
+
+model Rw {
+  id     String @id @default(uuid())
+  nomor  String @unique @db.VarChar(5)
+  ketua  String? @db.VarChar(120)
+  rtList Rt[]
+
+  @@map("rw")
+}
+
+model Rt {
+  id    String @id @default(uuid())
+  nomor String @db.VarChar(5)
+  ketua String? @db.VarChar(120)
+  rwId  String
+  rw    Rw     @relation(fields: [rwId], references: [id], onDelete: Cascade)
+
+  kartuKeluarga KartuKeluarga[]
+
+  @@unique([rwId, nomor])
+  @@map("rt")
+}
+
+model KartuKeluarga {
+  id           String   @id @default(uuid())
+  /// Nomor KK terenkripsi (AES-256-GCM), sama perlakuannya dengan NIK.
+  nomorKkEnc   String   @db.VarChar(255)
+  /// HMAC-SHA256 untuk pencarian tanpa mendekripsi.
+  nomorKkHash  String   @unique @db.VarChar(64)
+  alamat       String   @db.VarChar(255)
+  dusun        String?  @db.VarChar(80)
+  kodePos      String?  @db.VarChar(10)
+  rtId         String
+  rt           Rt       @relation(fields: [rtId], references: [id])
+  anggota      Penduduk[]
+
+  dibuatPada     DateTime @default(now())
+  diperbaruiPada DateTime @updatedAt
+
+  @@index([rtId])
+  @@map("kartu_keluarga")
+}
+
+model Penduduk {
+  id       String @id @default(uuid())
+  /// NIK terenkripsi at rest. Jangan pernah simpan NIK polos di kolom mana pun.
+  nikEnc   String @db.VarChar(255)
+  /// HMAC-SHA256 dari NIK — dipakai untuk lookup & unique constraint.
+  nikHash  String @unique @db.VarChar(64)
+
+  // Kolom di bawah mengikuti format baku data kependudukan Indonesia
+  // (susunan Kartu Keluarga / Dukcapil), supaya data desa bisa dicocokkan
+  // dan diimpor-ekspor tanpa pemetaan ulang. Daftar nilai bakunya ada di
+  // packages/shared/src/constants/kependudukan.ts
+  nama          String       @db.VarChar(120)
+  tempatLahir   String       @db.VarChar(80)
+  tanggalLahir  DateTime     @db.Date
+  jenisKelamin  JenisKelamin
+  agama         String       @db.VarChar(30)
+  /// Pendidikan terakhir yang ditamatkan.
+  pendidikan    String       @db.VarChar(50)
+  /// Jenis pekerjaan sesuai daftar baku Dukcapil.
+  pekerjaan     String       @db.VarChar(60)
+  statusKawin   StatusKawin
+  kewarganegaraan String     @db.VarChar(10) @default("WNI")
+  /// Status hubungan dalam keluarga: KEPALA_KELUARGA, ISTRI, ANAK, ...
+  hubunganKeluarga String    @db.VarChar(40)
+  namaAyah      String?      @db.VarChar(120)
+  namaIbu       String?      @db.VarChar(120)
+  golonganDarah String?      @db.VarChar(5)
+  noAktaLahir   String?      @db.VarChar(50)
+  noAktaKawin   String?      @db.VarChar(50)
+  noPaspor      String?      @db.VarChar(30)
+  disabilitas   String?      @db.VarChar(60)
+  /// true bila bukan penduduk asli desa (statistik "Pendatang").
+  pendatang     Boolean      @default(false)
+
+  tanggalMeninggal DateTime? @db.Date
+  tanggalPindah    DateTime? @db.Date
+
+  kartuKeluargaId String
+  kartuKeluarga   KartuKeluarga @relation(fields: [kartuKeluargaId], references: [id])
+
+  user       User?
+  perangkat  Perangkat?
+  penerima   PenerimaBantuan[]
+
+  dibuatPada     DateTime @default(now())
+  diperbaruiPada DateTime @updatedAt
+
+  @@index([kartuKeluargaId])
+  @@index([nama])
+  @@map("penduduk")
+}
+
+// ─────────────────────────────────────────────────────────────
+// PEMERINTAHAN & PROFIL DESA
+// ─────────────────────────────────────────────────────────────
+
+/// Singleton — satu baris berisi identitas & kontak desa (section Beranda + Kontak).
+model ProfilDesa {
+  id            Int      @id @default(1)
+  namaDesa      String   @db.VarChar(120)
+  kecamatan     String   @db.VarChar(80)
+  kabupaten     String   @db.VarChar(80)
+  provinsi      String   @db.VarChar(80)
+  kodePos       String?  @db.VarChar(10)
+  luasWilayahKm Decimal? @db.Decimal(10, 2)
+  sejarah       String?  @db.Text
+  visi          String?  @db.Text
+  misi          Json?
+  sambutanKades String?  @db.Text
+  videoProfilUrl String? @db.VarChar(255)
+  jamPelayanan  Json?
+  nomorDarurat  Json?
+  alamatKantor  String?  @db.VarChar(255)
+  latitude      Decimal? @db.Decimal(10, 7)
+  longitude     Decimal? @db.Decimal(10, 7)
+  waDesa        String?  @db.VarChar(30)
+  email         String?  @db.VarChar(120)
+  facebook      String?  @db.VarChar(255)
+  instagram     String?  @db.VarChar(255)
+  tiktok        String?  @db.VarChar(255)
+  youtube       String?  @db.VarChar(255)
+
+  diperbaruiPada DateTime @updatedAt
+
+  @@map("profil_desa")
+}
+
+model Perangkat {
+  id         String    @id @default(uuid())
+  pendudukId String    @unique
+  penduduk   Penduduk  @relation(fields: [pendudukId], references: [id])
+  jabatan    String    @db.VarChar(80)
+  /// Uraian tugas — mengisi "Tugas masing-masing perangkat".
+  uraianTugas String?  @db.Text
+  urutan     Int       @default(0)
+  fotoUrl    String?   @db.VarChar(255)
+  mulaiMenjabat DateTime? @db.Date
+  akhirMenjabat DateTime? @db.Date
+  aktif      Boolean   @default(true)
+
+  @@map("perangkat")
+}
+
+enum JenisLembaga {
+  BPD
+  LPM
+  PKK
+  KARANG_TARUNA
+  BUMDES
+}
+
+model Lembaga {
+  id        String       @id @default(uuid())
+  jenis     JenisLembaga
+  nama      String       @db.VarChar(120)
+  deskripsi String?      @db.Text
+  fotoUrl   String?      @db.VarChar(255)
+  anggota   AnggotaLembaga[]
+
+  @@map("lembaga")
+}
+
+model AnggotaLembaga {
+  id        String  @id @default(uuid())
+  lembagaId String
+  lembaga   Lembaga @relation(fields: [lembagaId], references: [id], onDelete: Cascade)
+  nama      String  @db.VarChar(120)
+  jabatan   String  @db.VarChar(80)
+  urutan    Int     @default(0)
+  fotoUrl   String? @db.VarChar(255)
+
+  @@index([lembagaId])
+  @@map("anggota_lembaga")
+}
+
+enum JenisDokumen {
+  PERDES
+  PERKADES
+  SK_KADES
+  RPJMDES
+  RKPDES
+  APBDES
+  REALISASI_APBDES
+  PPID_BERKALA
+  PPID_SETIAP_SAAT
+  PPID_SERTA_MERTA
+  FORMULIR
+  PROPOSAL
+  LAPORAN
+}
+
+/// Menopang section Pemerintahan Desa, PPID, dan Download Center sekaligus.
+model Dokumen {
+  id        String       @id @default(uuid())
+  jenis     JenisDokumen
+  judul     String       @db.VarChar(200)
+  nomor     String?      @db.VarChar(80)
+  tahun     Int
+  ringkasan String?      @db.Text
+  berkasId  String?
+  berkas    Berkas?      @relation(fields: [berkasId], references: [id], onDelete: SetNull)
+  publik    Boolean      @default(true)
+  jumlahUnduh Int        @default(0)
+
+  dibuatPada DateTime @default(now())
+
+  @@index([jenis, tahun])
+  @@map("dokumen")
+}
+
+// ─────────────────────────────────────────────────────────────
+// BERKAS (dipakai lintas modul)
+// ─────────────────────────────────────────────────────────────
+
+model Berkas {
+  id          String  @id @default(uuid())
+  namaAsli    String  @db.VarChar(255)
+  path        String  @db.VarChar(512)
+  mimeType    String  @db.VarChar(100)
+  ukuranByte  Int
+  diunggahOleh String? @db.VarChar(64)
+
+  dokumen        Dokumen[]
+  lampiranSurat  LampiranSurat[]
+  fotoPengaduan  FotoPengaduan[]
+  fotoProgres    ProgresProyek[]
+  mediaGaleri    Galeri[]
+  logoUmkm       Umkm[]     @relation("LogoUmkm")
+  qrisUmkm       Umkm[]     @relation("QrisUmkm")
+  fotoProduk     Produk[]   @relation("FotoProduk")
+  buktiBayar     BuktiBayar[] @relation("BuktiBayar")
+
+  dibuatPada DateTime @default(now())
+
+  @@map("berkas")
+}
+
+// ─────────────────────────────────────────────────────────────
+// KONTEN: BERITA, PENGUMUMAN, AGENDA, GALERI
+// ─────────────────────────────────────────────────────────────
+
+model Berita {
+  id        String   @id @default(uuid())
+  slug      String   @unique @db.VarChar(200)
+  judul     String   @db.VarChar(200)
+  ringkasan String?  @db.VarChar(500)
+  isi       String   @db.LongText
+  sampulUrl String?  @db.VarChar(255)
+  penulis   String   @db.VarChar(120)
+  terbit    Boolean  @default(false)
+  terbitPada DateTime?
+  dilihat   Int      @default(0)
+
+  dibuatPada     DateTime @default(now())
+  diperbaruiPada DateTime @updatedAt
+
+  @@index([terbit, terbitPada])
+  @@map("berita")
+}
+
+model Pengumuman {
+  id         String   @id @default(uuid())
+  judul      String   @db.VarChar(200)
+  isi        String   @db.Text
+  penting    Boolean  @default(false)
+  mulai      DateTime @db.Date
+  selesai    DateTime? @db.Date
+  berkasUrl  String?  @db.VarChar(255)
+
+  dibuatPada DateTime @default(now())
+
+  @@index([mulai, selesai])
+  @@map("pengumuman")
+}
+
+enum KategoriAgenda {
+  MUSYAWARAH_DESA
+  POSYANDU
+  GOTONG_ROYONG
+  FESTIVAL
+  HARI_BESAR
+  RAPAT_RT
+  LAINNYA
+}
+
+/// Menopang "Agenda kegiatan" (Beranda) dan "Kalender Desa".
+model Agenda {
+  id        String         @id @default(uuid())
+  judul     String         @db.VarChar(200)
+  kategori  KategoriAgenda @default(LAINNYA)
+  deskripsi String?        @db.Text
+  mulai     DateTime
+  selesai   DateTime?
+  lokasi    String?        @db.VarChar(200)
+  penyelenggara String?    @db.VarChar(120)
+
+  dibuatPada DateTime @default(now())
+
+  @@index([mulai])
+  @@map("agenda")
+}
+
+enum JenisMedia {
+  FOTO
+  VIDEO
+  DRONE
+}
+
+model Galeri {
+  id       String     @id @default(uuid())
+  judul    String     @db.VarChar(200)
+  jenis    JenisMedia
+  berkasId String?
+  berkas   Berkas?    @relation(fields: [berkasId], references: [id], onDelete: SetNull)
+  /// Dipakai bila media berupa tautan YouTube, bukan berkas unggahan.
+  urlEksternal String? @db.VarChar(255)
+  keterangan   String? @db.Text
+
+  dibuatPada DateTime @default(now())
+
+  @@map("galeri")
+}
+
+// ─────────────────────────────────────────────────────────────
+// PELAYANAN SURAT ONLINE
+// ─────────────────────────────────────────────────────────────
+
+enum StatusPengajuan {
+  DIPROSES
+  DISETUJUI
+  DITOLAK
+  SIAP_DIAMBIL
+}
+
+/// Template isi surat per jenis. Kode jenis mengacu ke packages/shared JENIS_SURAT.
+///
+/// Seluruh isinya diubah lewat Dashboard Perangkat, bukan lewat deploy ulang:
+/// isi surat, format nomor, maupun daftar field yang harus diisi pemohon.
+model TemplateSurat {
+  id          String  @id @default(uuid())
+  kode        String  @unique @db.VarChar(40)
+  nama        String  @db.VarChar(120)
+  /// Isi surat dengan placeholder {{nama}}, {{nik}}, {{keperluan}}, dst.
+  isiTemplate String  @db.LongText
+  /// Kosongkan untuk memakai format global di tabel `pengaturan`.
+  /// Contoh: "470/{{urut}}/BN-I/{{bulanRomawi}}/{{tahun}}"
+  formatNomor String? @db.VarChar(120)
+  /// Definisi field tambahan (label, tipe, wajib/tidak) — bisa disunting admin
+  /// tanpa mengubah kode, karena form pemohon dibangun dari sini.
+  fieldTambahan Json?
+  /// Lampiran yang wajib diunggah pemohon.
+  lampiranWajib Json?
+  urutan      Int     @default(0)
+  aktif       Boolean @default(true)
+
+  pengajuan PengajuanSurat[]
+
+  @@map("template_surat")
+}
+
+/// Penyimpan pengaturan yang boleh berubah sewaktu-waktu tanpa deploy:
+/// format nomor surat global, jam pelayanan, ambang batas, dan sejenisnya.
+model Pengaturan {
+  kunci      String   @id @db.VarChar(80)
+  nilai      Json
+  keterangan String?  @db.VarChar(255)
+  diubahOleh String?  @db.VarChar(64)
+  diubahPada DateTime @updatedAt
+
+  @@map("pengaturan")
+}
+
+/// Penomoran surat berjalan per tahun. Baris terpisah agar nomor tidak pernah
+/// bentrok saat dua perangkat menyetujui surat pada saat bersamaan.
+model CounterSurat {
+  id          String   @id @default(uuid())
+  tahun       Int
+  /// Kosong = satu rangkaian nomor untuk semua jenis surat (praktik paling umum).
+  kodeSurat   String   @db.VarChar(40) @default("")
+  urutTerakhir Int     @default(0)
+  diperbaruiPada DateTime @updatedAt
+
+  @@unique([tahun, kodeSurat])
+  @@map("counter_surat")
+}
+
+model PengajuanSurat {
+  id           String          @id @default(uuid())
+  /// Kode ringkas untuk dilacak warga, mis. "BN1-2026-000123".
+  kodeLacak    String          @unique @db.VarChar(30)
+  templateId   String
+  template     TemplateSurat   @relation(fields: [templateId], references: [id])
+
+  pemohonId    String
+  pemohon      User            @relation("PemohonSurat", fields: [pemohonId], references: [id])
+
+  keperluan    String          @db.VarChar(500)
+  /// Field tambahan spesifik per jenis surat (lihat `fieldTambahan` di shared).
+  data         Json
+  status       StatusPengajuan @default(DIPROSES)
+  catatan      String?         @db.VarChar(500)
+
+  peninjauId   String?
+  peninjau     User?           @relation("PeninjauSurat", fields: [peninjauId], references: [id], onDelete: SetNull)
+  ditinjauPada DateTime?
+
+  /// Dibangkitkan otomatis saat disetujui, tapi tetap boleh disunting perangkat
+  /// bila harus diselaraskan dengan buku agenda surat manual.
+  nomorSurat   String?         @unique @db.VarChar(80)
+
+  // ── Tanda tangan & verifikasi mandiri ──
+  // Desa memakai QR verifikasi sendiri, bukan PSrE tersertifikasi. Surat tetap
+  // ditandatangani basah; QR membuktikan bahwa lembar yang dipegang seseorang
+  // benar-benar terbit dari sistem dan isinya belum diubah.
+  /// Kode pendek pada QR, mengarah ke /verifikasi/{kodeVerifikasi}.
+  kodeVerifikasi String?       @unique @db.VarChar(24)
+  /// SHA-256 isi PDF final. Perbedaan satu huruf pun membuat hash tidak cocok.
+  hashDokumen  String?         @db.VarChar(64)
+  pdfPath      String?         @db.VarChar(512)
+  /// Pejabat yang menandatangani, untuk ditampilkan di halaman verifikasi.
+  ditandatanganiOleh String?   @db.VarChar(120)
+  ditandatanganiPada DateTime?
+  /// Berapa kali QR surat ini dipindai — deteksi dini surat yang beredar luas.
+  jumlahVerifikasi Int         @default(0)
+
+  lampiran     LampiranSurat[]
+  riwayat      RiwayatStatusSurat[]
+
+  dibuatPada     DateTime @default(now())
+  diperbaruiPada DateTime @updatedAt
+
+  @@index([pemohonId, status])
+  @@index([status, dibuatPada])
+  @@map("pengajuan_surat")
+}
+
+model LampiranSurat {
+  id          String         @id @default(uuid())
+  pengajuanId String
+  pengajuan   PengajuanSurat @relation(fields: [pengajuanId], references: [id], onDelete: Cascade)
+  berkasId    String
+  berkas      Berkas         @relation(fields: [berkasId], references: [id])
+  keterangan  String?        @db.VarChar(120)
+
+  @@index([pengajuanId])
+  @@map("lampiran_surat")
+}
+
+model RiwayatStatusSurat {
+  id          String          @id @default(uuid())
+  pengajuanId String
+  pengajuan   PengajuanSurat  @relation(fields: [pengajuanId], references: [id], onDelete: Cascade)
+  status      StatusPengajuan
+  catatan     String?         @db.VarChar(500)
+  olehUserId  String?         @db.VarChar(64)
+  dibuatPada  DateTime        @default(now())
+
+  @@index([pengajuanId])
+  @@map("riwayat_status_surat")
+}
+
+// ─────────────────────────────────────────────────────────────
+// TRANSPARANSI KEUANGAN & PEMBANGUNAN
+// ─────────────────────────────────────────────────────────────
+
+enum JenisAnggaran {
+  PENDAPATAN
+  BELANJA
+  PEMBIAYAAN
+}
+
+model Anggaran {
+  id     String @id @default(uuid())
+  tahun  Int
+  /// APBDes murni atau perubahan.
+  versi  String @db.VarChar(30) @default("MURNI")
+  dikunci Boolean @default(false)
+  item   ItemAnggaran[]
+
+  dibuatPada DateTime @default(now())
+
+  @@unique([tahun, versi])
+  @@map("anggaran")
+}
+
+model ItemAnggaran {
+  id         String        @id @default(uuid())
+  anggaranId String
+  anggaran   Anggaran      @relation(fields: [anggaranId], references: [id], onDelete: Cascade)
+  jenis      JenisAnggaran
+  /// Bidang/kelompok sesuai Permendagri, mis. "Penyelenggaraan Pemerintahan Desa".
+  bidang     String        @db.VarChar(150)
+  uraian     String        @db.VarChar(255)
+  /// Dana Desa, Dana Bagi Hasil, PADes, dst.
+  sumberDana String        @db.VarChar(80)
+  pagu       Decimal       @db.Decimal(15, 2)
+  realisasi  Decimal       @db.Decimal(15, 2) @default(0)
+
+  @@index([anggaranId, jenis])
+  @@map("item_anggaran")
+}
+
+enum StatusProyek {
+  PERENCANAAN
+  BERJALAN
+  SELESAI
+  TERTUNDA
+}
+
+model Proyek {
+  id          String       @id @default(uuid())
+  nama        String       @db.VarChar(200)
+  deskripsi   String?      @db.Text
+  lokasi      String       @db.VarChar(200)
+  latitude    Decimal?     @db.Decimal(10, 7)
+  longitude   Decimal?     @db.Decimal(10, 7)
+  nilai       Decimal      @db.Decimal(15, 2)
+  sumberDana  String       @db.VarChar(80)
+  kontraktor  String?      @db.VarChar(150)
+  pengawas    String?      @db.VarChar(150)
+  tanggalMulai DateTime    @db.Date
+  tanggalSelesai DateTime? @db.Date
+  status      StatusProyek @default(PERENCANAAN)
+  persentase  Int          @default(0)
+  tahun       Int
+
+  progres     ProgresProyek[]
+
+  dibuatPada     DateTime @default(now())
+  diperbaruiPada DateTime @updatedAt
+
+  @@index([tahun, status])
+  @@map("proyek")
+}
+
+model ProgresProyek {
+  id         String   @id @default(uuid())
+  proyekId   String
+  proyek     Proyek   @relation(fields: [proyekId], references: [id], onDelete: Cascade)
+  tanggal    DateTime @db.Date
+  persentase Int
+  catatan    String?  @db.Text
+  fotoId     String?
+  foto       Berkas?  @relation(fields: [fotoId], references: [id], onDelete: SetNull)
+
+  @@index([proyekId, tanggal])
+  @@map("progres_proyek")
+}
+
+// ─────────────────────────────────────────────────────────────
+// PENGADUAN MASYARAKAT
+// ─────────────────────────────────────────────────────────────
+
+enum KategoriPengaduan {
+  JALAN_RUSAK
+  LAMPU_MATI
+  SAMPAH
+  BANJIR
+  PELAYANAN
+  KONFLIK_SOSIAL
+  KEBAKARAN
+  INFRASTRUKTUR
+}
+
+enum StatusPengaduan {
+  BARU
+  DIVERIFIKASI
+  DITANGANI
+  SELESAI
+  DITOLAK
+}
+
+model Pengaduan {
+  id         String            @id @default(uuid())
+  kodeLacak  String            @unique @db.VarChar(30)
+  pelaporId  String?
+  pelapor    User?             @relation(fields: [pelaporId], references: [id], onDelete: SetNull)
+  /// Identitas pelapor disembunyikan di tampilan publik bila true.
+  anonim     Boolean           @default(false)
+
+  kategori   KategoriPengaduan
+  judul      String            @db.VarChar(150)
+  deskripsi  String            @db.Text
+  lokasiTeks String?           @db.VarChar(255)
+  latitude   Decimal?          @db.Decimal(10, 7)
+  longitude  Decimal?          @db.Decimal(10, 7)
+  status     StatusPengaduan   @default(BARU)
+
+  foto       FotoPengaduan[]
+  tanggapan  TanggapanPengaduan[]
+
+  dibuatPada     DateTime @default(now())
+  diperbaruiPada DateTime @updatedAt
+
+  @@index([status, dibuatPada])
+  @@index([kategori])
+  @@map("pengaduan")
+}
+
+model FotoPengaduan {
+  id          String    @id @default(uuid())
+  pengaduanId String
+  pengaduan   Pengaduan @relation(fields: [pengaduanId], references: [id], onDelete: Cascade)
+  berkasId    String
+  berkas      Berkas    @relation(fields: [berkasId], references: [id])
+
+  @@index([pengaduanId])
+  @@map("foto_pengaduan")
+}
+
+model TanggapanPengaduan {
+  id          String          @id @default(uuid())
+  pengaduanId String
+  pengaduan   Pengaduan       @relation(fields: [pengaduanId], references: [id], onDelete: Cascade)
+  isi         String          @db.Text
+  status      StatusPengaduan
+  olehUserId  String?         @db.VarChar(64)
+  dibuatPada  DateTime        @default(now())
+
+  @@index([pengaduanId])
+  @@map("tanggapan_pengaduan")
+}
+
+// ─────────────────────────────────────────────────────────────
+// BANTUAN SOSIAL
+// ─────────────────────────────────────────────────────────────
+
+model ProgramBantuan {
+  id        String  @id @default(uuid())
+  kode      String  @unique @db.VarChar(30) // PKH, BPNT, BLT, KIP, PIP, ...
+  nama      String  @db.VarChar(150)
+  deskripsi String? @db.Text
+  tahun     Int
+  aktif     Boolean @default(true)
+
+  penerima  PenerimaBantuan[]
+
+  @@map("program_bantuan")
+}
+
+model PenerimaBantuan {
+  id         String         @id @default(uuid())
+  programId  String
+  program    ProgramBantuan @relation(fields: [programId], references: [id], onDelete: Cascade)
+  pendudukId String
+  penduduk   Penduduk       @relation(fields: [pendudukId], references: [id], onDelete: Cascade)
+  periode    String         @db.VarChar(20) // "2026-Q1"
+  nominal    Decimal?       @db.Decimal(15, 2)
+  status     String         @db.VarChar(30) @default("TERDAFTAR")
+  dicairkanPada DateTime?
+
+  @@unique([programId, pendudukId, periode])
+  @@index([pendudukId])
+  @@map("penerima_bantuan")
+}
+
+// ─────────────────────────────────────────────────────────────
+// UMKM DESA — marketplace dengan pembayaran QRIS manual
+//
+// Tidak ada payment gateway. Tiap UMKM memasang QRIS miliknya sendiri;
+// pembeli transfer lalu mengunggah bukti bayar, dan UMKM yang memverifikasi.
+// Konsekuensinya: desa tidak pernah memegang uang warga, tidak ada biaya
+// transaksi, dan tidak perlu akun merchant. Risikonya berpindah ke verifikasi
+// manual — karena itu bukti bayar disimpan sebagai berkas dan setiap perubahan
+// status pesanan direkam di riwayat.
+// ─────────────────────────────────────────────────────────────
+
+enum KategoriUmkm {
+  MAKANAN
+  KERAJINAN
+  PERTANIAN
+  PETERNAKAN
+  PERIKANAN
+  JASA
+}
+
+model Umkm {
+  id          String       @id @default(uuid())
+  pemilikId   String
+  pemilik     User         @relation(fields: [pemilikId], references: [id])
+  nama        String       @db.VarChar(150)
+  kategori    KategoriUmkm
+  deskripsi   String?      @db.Text
+  alamat      String?      @db.VarChar(255)
+  latitude    Decimal?     @db.Decimal(10, 7)
+  longitude   Decimal?     @db.Decimal(10, 7)
+  whatsapp    String       @db.VarChar(30)
+  logoId      String?
+  logo        Berkas?      @relation("LogoUmkm", fields: [logoId], references: [id], onDelete: SetNull)
+
+  /// Gambar QRIS statis milik UMKM ini, ditampilkan saat pembeli checkout.
+  qrisBerkasId String?
+  qrisBerkas   Berkas?     @relation("QrisUmkm", fields: [qrisBerkasId], references: [id], onDelete: SetNull)
+  /// Rekening bank sebagai alternatif bila pembeli tidak memakai QRIS.
+  namaBank     String?     @db.VarChar(60)
+  nomorRekening String?    @db.VarChar(40)
+  atasNama     String?     @db.VarChar(120)
+
+  terverifikasi Boolean    @default(false)
+  aktif         Boolean    @default(true)
+
+  produk   Produk[]
+  pesanan  Pesanan[]
+  ulasan   Ulasan[]
+
+  dibuatPada     DateTime @default(now())
+  diperbaruiPada DateTime @updatedAt
+
+  @@index([kategori, aktif])
+  @@map("umkm")
+}
+
+model Produk {
+  id        String  @id @default(uuid())
+  umkmId    String
+  umkm      Umkm    @relation(fields: [umkmId], references: [id], onDelete: Cascade)
+  nama      String  @db.VarChar(150)
+  deskripsi String? @db.Text
+  harga     Decimal @db.Decimal(12, 2)
+  satuan    String  @db.VarChar(20) @default("pcs")
+  stok      Int     @default(0)
+  fotoId    String?
+  foto      Berkas? @relation("FotoProduk", fields: [fotoId], references: [id], onDelete: SetNull)
+  aktif     Boolean @default(true)
+
+  item   ItemPesanan[]
+  ulasan Ulasan[]
+
+  dibuatPada     DateTime @default(now())
+  diperbaruiPada DateTime @updatedAt
+
+  @@index([umkmId, aktif])
+  @@map("produk")
+}
+
+enum StatusPesanan {
+  MENUNGGU_PEMBAYARAN
+  MENUNGGU_VERIFIKASI
+  DIBAYAR
+  DIPROSES_PENJUAL
+  SELESAI
+  DITOLAK
+  DIBATALKAN
+}
+
+model Pesanan {
+  id         String        @id @default(uuid())
+  kodePesanan String       @unique @db.VarChar(30)
+  pembeliId  String
+  pembeli    User          @relation(fields: [pembeliId], references: [id])
+  umkmId     String
+  umkm       Umkm          @relation(fields: [umkmId], references: [id])
+
+  total      Decimal       @db.Decimal(12, 2)
+  status     StatusPesanan @default(MENUNGGU_PEMBAYARAN)
+  catatan    String?       @db.VarChar(500)
+  alamatKirim String?      @db.VarChar(255)
+  /// Alasan bila penjual menolak bukti bayar.
+  alasanTolak String?      @db.VarChar(500)
+  /// Batas waktu unggah bukti bayar sebelum pesanan hangus otomatis.
+  kedaluwarsaPada DateTime?
+
+  item       ItemPesanan[]
+  buktiBayar BuktiBayar[]
+  riwayat    RiwayatPesanan[]
+
+  dibuatPada     DateTime @default(now())
+  diperbaruiPada DateTime @updatedAt
+
+  @@index([pembeliId, status])
+  @@index([umkmId, status])
+  @@map("pesanan")
+}
+
+model ItemPesanan {
+  id        String  @id @default(uuid())
+  pesananId String
+  pesanan   Pesanan @relation(fields: [pesananId], references: [id], onDelete: Cascade)
+  produkId  String
+  produk    Produk  @relation(fields: [produkId], references: [id])
+  /// Disalin saat pesanan dibuat — harga di katalog boleh berubah nanti,
+  /// tapi nota pesanan lama tidak boleh ikut berubah.
+  namaProduk String @db.VarChar(150)
+  hargaSatuan Decimal @db.Decimal(12, 2)
+  jumlah    Int
+  subtotal  Decimal @db.Decimal(12, 2)
+
+  @@index([pesananId])
+  @@map("item_pesanan")
+}
+
+model BuktiBayar {
+  id         String   @id @default(uuid())
+  pesananId  String
+  pesanan    Pesanan  @relation(fields: [pesananId], references: [id], onDelete: Cascade)
+  berkasId   String
+  berkas     Berkas   @relation("BuktiBayar", fields: [berkasId], references: [id])
+  nominal    Decimal? @db.Decimal(12, 2)
+  tanggalTransfer DateTime?
+  catatan    String?  @db.VarChar(255)
+  /// Diisi penjual saat memeriksa bukti ini.
+  diverifikasiOleh String? @db.VarChar(64)
+  diverifikasiPada DateTime?
+  diterima   Boolean? // null = belum diperiksa
+
+  dibuatPada DateTime @default(now())
+
+  @@index([pesananId])
+  @@map("bukti_bayar")
+}
+
+model RiwayatPesanan {
+  id        String        @id @default(uuid())
+  pesananId String
+  pesanan   Pesanan       @relation(fields: [pesananId], references: [id], onDelete: Cascade)
+  status    StatusPesanan
+  catatan   String?       @db.VarChar(500)
+  olehUserId String?      @db.VarChar(64)
+  dibuatPada DateTime     @default(now())
+
+  @@index([pesananId])
+  @@map("riwayat_pesanan")
+}
+
+model Ulasan {
+  id        String   @id @default(uuid())
+  umkmId    String
+  umkm      Umkm     @relation(fields: [umkmId], references: [id], onDelete: Cascade)
+  produkId  String?
+  produk    Produk?  @relation(fields: [produkId], references: [id], onDelete: SetNull)
+  penulisId String
+  penulis   User     @relation(fields: [penulisId], references: [id])
+  rating    Int      // 1..5
+  komentar  String?  @db.Text
+
+  dibuatPada DateTime @default(now())
+
+  @@unique([produkId, penulisId])
+  @@index([umkmId])
+  @@map("ulasan")
+}
+
+// ─────────────────────────────────────────────────────────────
+// TODO Fase 3 — UnitUsahaBumdes, LaporanBumdes, SewaAlat,
+//               HargaKomoditas, JadwalTanam, PenyuluhanPertanian,
+//               VaksinTernak, BibitIkan, Lowongan
+// TODO Fase 4 — FasilitasPendidikan, Beasiswa, Posyandu, JadwalImunisasi,
+//               JadwalDokter, FiturPeta (GeoJSON layer)
+// ─────────────────────────────────────────────────────────────

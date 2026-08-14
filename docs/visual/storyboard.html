@@ -1,0 +1,867 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<title>Storyboard — Website Desa Bintang Ninggi I</title>
+<style>
+  @page { size: A4; margin: 16mm 14mm; }
+
+  :root {
+    --hijau: #1c5b41;
+    --hijau-muda: #f0f9f4;
+    --garis: #d8e2dc;
+    --teks: #1f2937;
+    --redup: #6b7280;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: "Segoe UI", Inter, system-ui, sans-serif;
+    color: var(--teks);
+    font-size: 11pt;
+    line-height: 1.55;
+    background: #fff;
+  }
+
+  .halaman { max-width: 190mm; margin: 0 auto; padding: 0 4mm; }
+
+  .sampul {
+    background: linear-gradient(135deg, #1c5b41 0%, #348f64 100%);
+    color: #fff;
+    padding: 34mm 16mm;
+    margin-bottom: 14mm;
+    page-break-after: always;
+  }
+  .sampul .kop { font-size: 10pt; letter-spacing: .18em; text-transform: uppercase; opacity: .85; }
+  .sampul h1 { font-size: 30pt; margin: 6mm 0 3mm; line-height: 1.15; font-weight: 800; }
+  .sampul h2 { font-size: 14pt; font-weight: 500; opacity: .92; margin: 0 0 14mm; }
+  .sampul .meta { border-top: 1px solid rgba(255,255,255,.35); padding-top: 6mm; font-size: 10pt; opacity: .9; }
+  .sampul .meta div { margin-bottom: 2mm; }
+
+  h2.bab {
+    font-size: 17pt;
+    color: var(--hijau);
+    border-bottom: 3px solid var(--hijau);
+    padding-bottom: 2mm;
+    margin: 12mm 0 5mm;
+    page-break-after: avoid;
+  }
+  h3 { font-size: 13pt; margin: 7mm 0 2mm; color: #14432f; page-break-after: avoid; }
+  p { margin: 0 0 3mm; }
+
+  /* Sengaja TIDAK memakai break-inside: avoid di sini. Bila seluruh blok
+     (teks + diagram) dipaksa utuh, teks pengantar ikut terdorong dan
+     meninggalkan halaman kosong. Cukup diagramnya saja yang dijaga utuh. */
+  .flow { margin-bottom: 9mm; }
+
+  .diagram {
+    border: 1px solid var(--garis);
+    border-radius: 10px;
+    background: #fcfefd;
+    padding: 7mm 5mm;
+    text-align: center;
+    margin: 4mm 0;
+    overflow: hidden;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Tinggi area cetak A4 dikurangi margin = ~267mm. Diagram dibatasi di bawah
+     angka itu supaya tidak pernah lebih tinggi dari satu halaman — elemen yang
+     lebih tinggi dari halaman justru memicu halaman kosong. */
+  .diagram svg { max-width: 100%; height: auto; max-height: 185mm; }
+
+  .tangkapan-blok { break-inside: avoid; page-break-inside: avoid; margin: 4mm 0 6mm; }
+  .tangkapan-blok + .tangkapan-blok { break-before: page; page-break-before: always; }
+
+  .tangkapan {
+    border: 1px solid var(--garis);
+    border-radius: 10px;
+    overflow: hidden;
+    background: #fff;
+    text-align: center;
+  }
+  .tangkapan img {
+    display: block;
+    margin: 0 auto;
+    max-width: 100%;
+    max-height: 218mm;
+    width: auto;
+    height: auto;
+  }
+  .keterangan { font-size: 9pt; color: var(--redup); margin-top: 2mm; text-align: center; }
+
+  .label-alur {
+    display: inline-block;
+    background: var(--hijau);
+    color: #fff;
+    font-size: 9pt;
+    font-weight: 700;
+    letter-spacing: .06em;
+    padding: 1mm 3mm;
+    border-radius: 4px;
+    margin-bottom: 2mm;
+  }
+
+  /* Tabel panjang (inventaris 25 baris) dibiarkan boleh terbelah antar halaman;
+     yang dijaga utuh cukup barisnya. Memaksa seluruh tabel utuh membuat tabel
+     yang lebih tinggi dari halaman melompat dan meninggalkan halaman kosong. */
+  table { width: 100%; border-collapse: collapse; font-size: 9.5pt; margin: 3mm 0 5mm; }
+  tr { break-inside: avoid; page-break-inside: avoid; }
+  th { background: var(--hijau); color: #fff; text-align: left; padding: 2mm 3mm; font-weight: 600; }
+  td { border-bottom: 1px solid var(--garis); padding: 2mm 3mm; vertical-align: top; }
+  tr:nth-child(even) td { background: #f8fbf9; }
+
+  .catatan {
+    border-left: 4px solid #f59e0b;
+    background: #fffbeb;
+    padding: 3mm 4mm;
+    font-size: 10pt;
+    margin: 3mm 0 5mm;
+    page-break-inside: avoid;
+  }
+  .catatan b { color: #92400e; }
+
+  .penting {
+    border-left: 4px solid #dc2626;
+    background: #fef2f2;
+    padding: 3mm 4mm;
+    font-size: 10pt;
+    margin: 3mm 0 5mm;
+    page-break-inside: avoid;
+  }
+  .penting b { color: #991b1b; }
+
+  .coret { text-decoration: line-through; color: #9ca3af; }
+
+  ul { margin: 0 0 4mm; padding-left: 6mm; }
+  li { margin-bottom: 1.5mm; }
+
+  .pecah { page-break-before: always; }
+
+  code {
+    background: var(--hijau-muda);
+    padding: .5mm 1.5mm;
+    border-radius: 3px;
+    font-family: "Cascadia Mono", Consolas, monospace;
+    font-size: 9pt;
+    color: #14432f;
+  }
+
+  .kaki { margin-top: 12mm; padding-top: 4mm; border-top: 1px solid var(--garis); font-size: 9pt; color: var(--redup); }
+</style>
+</head>
+<body>
+
+<div class="sampul">
+  <div class="kop">Pemerintah Desa Bintang Ninggi I &middot; Kecamatan Teweh Selatan</div>
+  <h1>Storyboard<br />Website Desa Bintang Ninggi I</h1>
+  <h2>Rancangan alur pengguna, peta situs, dan struktur layar</h2>
+  <div class="meta">
+    <div><b>Stack</b> &mdash; React (Vite) &middot; Express &middot; MySQL</div>
+    <div><b>Cakupan</b> &mdash; 23 section publik &middot; 78 layar &middot; 2 dashboard</div>
+    <div><b>Sumber</b> &mdash; dokumen tulisan tangan &ldquo;Laman Website Desa Bintang Ninggi I&rdquo; (5 halaman) setelah revisi coretan</div>
+    <div><b>Dokumen</b> &mdash; versi 0.1 &middot; <span id="tanggal"></span></div>
+  </div>
+</div>
+
+<div class="halaman">
+
+<h2 class="bab">1. Ringkasan Revisi Dokumen</h2>
+
+<p>Dokumen tulisan tangan memuat 25 section. Setelah membaca seluruh coretan, dua section
+dibatalkan dan beberapa sub-item dihapus atau diganti. Struktur final menjadi <b>23 section</b>.</p>
+
+<h3>Section yang dibatalkan</h3>
+<table>
+  <tr><th style="width:15%">No. asli</th><th style="width:30%">Section</th><th>Tanda pada dokumen</th></tr>
+  <tr><td>11</td><td class="coret">Pariwisata Desa</td><td>Dicoret X besar menyilang seluruh blok (Destinasi wisata, Penginapan, Kuliner, Kalender event, Tiket online, Galeri, Virtual Tour)</td></tr>
+  <tr><td>22</td><td class="coret">Aspirasi Warga</td><td>Dicoret X besar menyilang seluruh blok (Usulan pembangunan, Voting, Saran)</td></tr>
+</table>
+
+<h3>Sub-item yang dihapus dan diganti</h3>
+<table>
+  <tr><th style="width:28%">Section</th><th style="width:30%">Sub-item</th><th>Keputusan</th></tr>
+  <tr><td>2. Profil Desa</td><td class="coret">Lambang dan maknanya</td><td>Dihapus &mdash; dicoret garis lurus</td></tr>
+  <tr><td>12. Pendidikan</td><td class="coret">SMP</td><td>Dihapus &mdash; dicoret</td></tr>
+  <tr><td>12. Pendidikan</td><td class="coret">SMA</td><td>Dihapus &mdash; dicoret</td></tr>
+  <tr><td>13. Kesehatan</td><td class="coret">Donor darah</td><td>Dihapus &mdash; dicoret</td></tr>
+  <tr><td>13. Kesehatan</td><td>Puskesmas</td><td>Diganti menjadi <b>Pustu</b> &mdash; koreksi tulisan tangan di samping</td></tr>
+  <tr><td>3. Pemerintahan Desa</td><td>Dokumen PPID</td><td>Dipindahkan ke section PPID (no. 24 asli) agar tidak duplikat</td></tr>
+</table>
+
+<div class="catatan">
+  <b>Keputusan turunan.</b> Item &ldquo;Aspirasi&rdquo; pada Dashboard Warga ikut dihapus karena
+  merupakan pintu masuk ke section 22 yang dibatalkan. Selain itu, &ldquo;Cek status penerima
+  bantuan dengan NIK&rdquo; dipindah ke balik login warga &mdash; alasannya dijelaskan pada Alur 4.
+</div>
+
+<h2 class="bab pecah">2. Arsitektur Sistem</h2>
+
+<p>Tiga lapis terpisah: React di sisi pengguna, Express sebagai satu-satunya pintu ke data,
+dan MySQL sebagai penyimpan. Paket <code>shared</code> berisi registry section dan skema
+validasi yang dipakai frontend maupun backend, sehingga aturan data tidak pernah berbeda
+di dua sisi.</p>
+
+<div class="flow">
+  <div class="diagram" id="diagram-arsitektur">
+    <pre class="mermaid">
+flowchart TB
+  subgraph KLIEN["Sisi Pengguna"]
+    direction LR
+    W1["Warga<br/>browser HP"]
+    W2["Perangkat Desa<br/>browser desktop"]
+    W3["Tamu / Publik"]
+  end
+
+  subgraph FE["Frontend - React + Vite"]
+    direction LR
+    R1["Halaman Publik<br/>23 section"]
+    R2["Dashboard Warga"]
+    R3["Dashboard Perangkat"]
+  end
+
+  subgraph BE["Backend - Express"]
+    direction LR
+    A1["Auth<br/>JWT + refresh"]
+    A2["Modul Domain<br/>surat, pengaduan, keuangan"]
+    A3["Generator PDF + QR"]
+    A4["Audit Log"]
+  end
+
+  subgraph DATA["Penyimpanan"]
+    direction LR
+    D1[("MySQL<br/>Prisma ORM")]
+    D2["Berkas unggahan<br/>foto, lampiran"]
+  end
+
+  subgraph LUAR["Layanan Luar"]
+    direction LR
+    L1["BMKG - cuaca"]
+    L2["OpenStreetMap - peta"]
+  end
+
+  W1 --> R1
+  W2 --> R3
+  W3 --> R1
+  R1 --> A1
+  R2 --> A2
+  R3 --> A2
+  A1 --> D1
+  A2 --> D1
+  A2 --> D2
+  A2 --> A3
+  A2 --> A4
+  A4 --> D1
+  R1 -.-> L1
+  R1 -.-> L2
+    </pre>
+  </div>
+</div>
+
+<h2 class="bab pecah">3. Peta Situs</h2>
+
+<p>Seluruh section dikelompokkan menurut fase pengerjaan. Fase 1 membuat website sudah
+berguna nyata bagi warga; fase berikutnya menambah kedalaman.</p>
+
+<div class="flow">
+  <div class="diagram" id="diagram-peta-situs">
+    <pre class="mermaid">
+flowchart TB
+  B(["Beranda"])
+
+  subgraph F1["FASE 1 - Inti"]
+    direction LR
+    S02["02 Profil Desa"]
+    S03["03 Pemerintahan Desa"]
+    S04["04 Pelayanan Online"]
+    S05["05 Data Kependudukan"]
+  end
+
+  subgraph F2["FASE 2 - Transparansi"]
+    direction LR
+    S06["06 Transparansi Keuangan"]
+    S07["07 Pembangunan Desa"]
+    S08["08 Pengaduan Masyarakat"]
+    S21["21 Download Center"]
+    S22["22 PPID"]
+  end
+
+  subgraph F3["FASE 3 - Ekonomi Desa"]
+    direction LR
+    S09["09 UMKM Desa"]
+    S10["10 BumDes"]
+    S13["13 Pertanian"]
+    S14["14 Peternakan"]
+    S15["15 Perikanan"]
+    S16["16 Bantuan Sosial"]
+    S17["17 Lowongan Kerja"]
+  end
+
+  subgraph F4["FASE 4 - Pelengkap"]
+    direction LR
+    S11["11 Pendidikan"]
+    S12["12 Kesehatan"]
+    S18["18 Kalender Desa"]
+    S19["19 Galeri"]
+    S20["20 Peta Desa Interaktif"]
+    S23["23 Kontak"]
+  end
+
+  B --> F1
+  B --> F2
+  B --> F3
+  B --> F4
+  B --> M["Masuk / Aktivasi"]
+  M --> DW["Dashboard Warga"]
+  M --> DP["Dashboard Perangkat Desa"]
+    </pre>
+  </div>
+</div>
+
+<h2 class="bab pecah">4. Peran dan Hak Akses</h2>
+
+<p>Tiga peran dengan batas yang tegas. Yang menentukan bukan halamannya, melainkan datanya:
+data agregat boleh dilihat siapa saja, data pribadi hanya oleh pemiliknya dan perangkat desa
+yang berwenang.</p>
+
+<div class="flow">
+  <div class="diagram" id="diagram-peran">
+    <pre class="mermaid">
+flowchart LR
+  T["TAMU<br/>tanpa login"]
+  G["WARGA<br/>NIK + PIN"]
+  P["PERANGKAT<br/>username + password"]
+  A["ADMIN"]
+
+  T --> T1["Baca semua halaman publik"]
+  T --> T2["Statistik agregat"]
+  T --> T3["Verifikasi surat via QR"]
+
+  G --> G1["Semua hak Tamu"]
+  G --> G2["Ajukan surat"]
+  G --> G3["Lihat data pribadi sendiri"]
+  G --> G4["Buat dan pantau pengaduan"]
+  G --> G5["Cek status bantuan sendiri"]
+
+  P --> P1["Semua hak Warga"]
+  P --> P2["Kelola data penduduk"]
+  P --> P3["Setujui / tolak surat"]
+  P --> P4["Kelola konten dan keuangan"]
+  P --> P5["Tanggapi pengaduan"]
+
+  A --> A1["Semua hak Perangkat"]
+  A --> A2["Kelola akun perangkat"]
+  A --> A3["Lihat audit log"]
+    </pre>
+  </div>
+</div>
+
+<h2 class="bab pecah">5. Alur Pengguna</h2>
+
+<h3>Alur 1 &mdash; Aktivasi akun warga</h3>
+<span class="label-alur">FASE 1 &middot; PALING KRITIS</span>
+
+<p>Alur ini ada karena satu alasan: <b>NIK bukan rahasia</b>. NIK tercetak di KTP, disalin
+ke banyak formulir, dan diketahui banyak pihak. Kalau login cukup bermodal NIK, siapa pun
+yang tahu NIK tetangganya bisa membuka data pribadi orang itu. Karena itu akun harus
+diaktifkan lebih dulu melalui perangkat desa, dan warga menetapkan PIN miliknya sendiri.</p>
+
+<div class="flow">
+  <div class="diagram" id="diagram-alur-1">
+    <pre class="mermaid">
+sequenceDiagram
+    autonumber
+    actor W as Warga
+    actor P as Perangkat Desa
+    participant S as Sistem
+
+    P->>S: Daftarkan warga (pilih dari data penduduk)
+    S-->>P: Terbit kode aktivasi (berlaku 7 hari)
+    P-->>W: Serahkan kode (cetak / WhatsApp)
+    W->>S: Buka /aktivasi - isi NIK + kode + PIN baru
+    S->>S: Cocokkan NIK dan kode
+    S->>S: Simpan hash PIN (argon2id)
+    S-->>W: Akun aktif - arahkan ke halaman Masuk
+    W->>S: Login dengan NIK + PIN
+    S-->>W: Access token 15 menit + refresh token
+    </pre>
+  </div>
+</div>
+
+<table>
+  <tr><th style="width:38%">Kegagalan yang harus ditangani</th><th>Perlakuan</th></tr>
+  <tr><td>Kode kedaluwarsa / sudah dipakai</td><td>Tolak, minta warga menghubungi kantor desa</td></tr>
+  <tr><td>NIK tidak terdaftar</td><td>Pesan seragam &ldquo;NIK atau kode tidak cocok&rdquo; &mdash; jangan bocorkan mana yang salah</td></tr>
+  <tr><td>Percobaan berulang</td><td>Kunci akun 15 menit setelah 5 kali gagal</td></tr>
+  <tr><td>Warga lupa PIN</td><td>Reset hanya lewat perangkat desa, bukan lewat email/SMS otomatis</td></tr>
+</table>
+
+<h3 class="pecah">Alur 2 &mdash; Pengajuan surat sampai terbit</h3>
+<span class="label-alur">FASE 1 &middot; ALUR TERPENTING</span>
+
+<p>Inti dari seluruh sistem. Perhatikan bahwa surat <b>tidak langsung menjadi PDF</b> saat
+diajukan. PDF baru dibuat setelah disetujui, supaya tidak ada berkas berkop desa yang
+beredar tanpa persetujuan perangkat.</p>
+
+<div class="flow">
+  <div class="diagram" id="diagram-alur-2">
+    <pre class="mermaid">
+sequenceDiagram
+    autonumber
+    actor W as Warga
+    participant S as Sistem
+    actor P as Perangkat Desa
+    actor K as Kepala Desa
+
+    W->>S: Pilih jenis surat di /layanan
+    S-->>W: Form dinamis sesuai jenis surat
+    W->>S: Isi data + unggah lampiran (KTP/KK)
+    S-->>W: Kode lacak - status DIPROSES
+
+    P->>S: Buka daftar pengajuan di /admin/surat
+
+    alt Berkas lengkap
+        P->>S: Setujui
+        S->>S: Terbitkan nomor surat
+        S->>S: Render PDF + hitung hash + tempel QR
+        S-->>W: Status DISETUJUI + tautan unduh
+        K->>S: Tanda tangan (basah / TTE)
+        P->>S: Tandai SIAP_DIAMBIL
+        S-->>W: Notifikasi surat siap
+    else Berkas kurang
+        P->>S: Tolak + alasan (wajib diisi)
+        S-->>W: Status DITOLAK + alasan perbaikan
+    end
+    </pre>
+  </div>
+</div>
+
+<p><b>Perubahan status surat</b> mengikuti mesin status berikut. Status tidak boleh melompat
+sembarangan &mdash; inilah yang membuat riwayat pengajuan bisa dipertanggungjawabkan.</p>
+
+<div class="flow">
+  <div class="diagram" id="diagram-status-surat">
+    <pre class="mermaid">
+stateDiagram-v2
+    [*] --> DIPROSES: warga mengajukan
+    DIPROSES --> DISETUJUI: perangkat menyetujui
+    DIPROSES --> DITOLAK: berkas kurang
+    DISETUJUI --> SIAP_DIAMBIL: sudah ditandatangani
+    DITOLAK --> DIPROSES: warga memperbaiki dan mengajukan ulang
+    SIAP_DIAMBIL --> [*]
+    </pre>
+  </div>
+</div>
+
+<div class="catatan">
+  <b>Verifikasi keaslian.</b> QR Code pada surat cetak mengarah ke <code>/verifikasi/{kode}</code>.
+  Halaman itu publik dan hanya menampilkan nomor surat, jenis, tanggal terbit, penandatangan,
+  dan status keaslian &mdash; <b>tanpa data pribadi pemohon</b>, karena tautannya bisa dibuka siapa
+  saja yang memegang lembar suratnya. Yang dicocokkan adalah SHA-256 isi PDF: satu huruf saja
+  diubah, hash tidak lagi cocok.
+</div>
+
+<div class="penting">
+  <b>QR ini bukan tanda tangan elektronik tersertifikasi.</b> Desa memakai verifikasi mandiri,
+  bukan PSrE seperti BSrE atau Peruri. Secara hukum (PP 71/2019) yang berlaku sebagai tanda
+  tangan sah tetap tanda tangan basah + stempel pada lembar surat; QR berperan sebagai
+  pengaman tambahan agar surat tidak bisa dipalsukan. Bila kelak desa mendaftar ke PSrE,
+  kolom penandatangan tinggal diisi dari sertifikat tanpa mengubah struktur tabel.
+</div>
+
+<h3 class="pecah">Alur 3 &mdash; Pengaduan masyarakat</h3>
+<span class="label-alur">FASE 2</span>
+
+<p>Warga melaporkan masalah dengan foto dan titik GPS, lalu memantau tindak lanjutnya.
+Laporan boleh anonim <i>di tampilan publik</i>, tetapi identitas pelapor tetap tersimpan dan
+terlihat oleh perangkat desa. Tanpa itu, kolom pengaduan akan cepat dipenuhi laporan palsu.</p>
+
+<div class="flow">
+  <div class="diagram" id="diagram-alur-3">
+    <pre class="mermaid">
+flowchart TD
+    A["Warga buka /pengaduan/buat"] --> B{"Sudah login?"}
+    B -->|Belum| C["Arahkan ke /masuk"]
+    C --> B
+    B -->|Sudah| D["Pilih kategori<br/>jalan rusak, lampu mati, sampah,<br/>banjir, pelayanan, konflik sosial,<br/>kebakaran, infrastruktur"]
+    D --> E["Isi judul dan deskripsi"]
+    E --> F["Unggah foto - maks. 5"]
+    F --> G{"Izinkan akses lokasi?"}
+    G -->|Ya| H["Ambil koordinat GPS otomatis"]
+    G -->|Tidak| I["Isi nama lokasi manual"]
+    H --> J["Kirim - status BARU"]
+    I --> J
+    J --> K["Perangkat desa memverifikasi"]
+    K --> L{"Laporan valid?"}
+    L -->|Ya| M["DITANGANI - tulis tanggapan"]
+    L -->|Tidak| N["DITOLAK + alasan"]
+    M --> O["SELESAI - lampirkan foto hasil"]
+    O --> P["Warga menerima notifikasi"]
+    N --> P
+    </pre>
+  </div>
+</div>
+
+<h3>Alur 4 &mdash; Warga mengecek status bantuan sosial</h3>
+<span class="label-alur">FASE 3</span>
+
+<p>Dokumen asli menulis &ldquo;Status penerima dapat dicek menggunakan NIK&rdquo;. Cara itu diubah,
+dan alasannya penting.</p>
+
+<div class="flow">
+  <div class="diagram" id="diagram-alur-4">
+    <pre class="mermaid">
+sequenceDiagram
+    autonumber
+    actor W as Warga
+    participant S as Sistem
+    participant D as Database
+
+    W->>S: Login (NIK + PIN)
+    S-->>W: Sesi aktif
+    W->>S: Buka /warga/bantuan
+    S->>D: Ambil penerima berdasarkan pendudukId dari SESI
+    Note over S,D: Bukan dari NIK yang diketik di form
+    D-->>S: Daftar program + status + periode
+    S-->>W: Tampilkan status bantuan milik sendiri
+    </pre>
+  </div>
+</div>
+
+<div class="penting">
+  <b>Jangan sediakan endpoint publik &ldquo;cek bantuan dengan NIK&rdquo;.</b> Endpoint semacam itu
+  bisa dipakai menyisir NIK satu per satu untuk memetakan siapa saja warga penerima bantuan
+  di desa &mdash; informasi yang sensitif secara sosial dan bisa memicu kecemburuan atau
+  penyalahgunaan. Status hanya dibuka untuk pemilik akun setelah login.
+</div>
+
+<h3 class="pecah">Alur 5 &mdash; Perangkat desa memperbarui data penduduk</h3>
+<span class="label-alur">FASE 1</span>
+
+<p>Setiap pembukaan dan perubahan data penduduk wajib tercatat. Ini kewajiban UU PDP
+No. 27 Tahun 2022, sekaligus pelindung perangkat desa bila suatu saat muncul tuduhan
+penyalahgunaan data.</p>
+
+<div class="flow">
+  <div class="diagram" id="diagram-alur-5">
+    <pre class="mermaid">
+flowchart LR
+    A["Login perangkat"] --> B["Buka /admin/penduduk"]
+    B --> C["Cari via nama<br/>atau hash NIK"]
+    C --> D["Buka detail penduduk"]
+    D --> E["Ubah data"]
+    E --> F["Simpan"]
+    F --> G[("audit_logs<br/>siapa - kapan - dari IP mana")]
+    F --> H[("tabel penduduk")]
+    H --> I["Statistik agregat<br/>ikut berubah otomatis"]
+    D -.->|dibuka saja| G
+    </pre>
+  </div>
+</div>
+
+<h3>Alur 6 &mdash; Perjalanan warga secara menyeluruh</h3>
+<span class="label-alur">RINGKASAN LINTAS FASE</span>
+
+<p>Gambaran besar: dari warga yang belum punya akun sampai memakai seluruh layanan.</p>
+
+<div class="flow">
+  <div class="diagram" id="diagram-alur-6">
+    <pre class="mermaid">
+journey
+    title Perjalanan Warga Desa Bintang Ninggi I
+    section Mengenal
+      Buka website dari HP: 5: Warga
+      Baca berita dan pengumuman: 4: Warga
+      Lihat transparansi anggaran: 4: Warga
+    section Bergabung
+      Minta kode aktivasi ke kantor desa: 3: Warga
+      Aktivasi akun dan buat PIN: 4: Warga
+    section Memakai Layanan
+      Ajukan surat domisili: 5: Warga
+      Pantau status pengajuan: 5: Warga
+      Unduh surat ber-QR: 5: Warga
+    section Berpartisipasi
+      Laporkan jalan rusak: 4: Warga
+      Pantau tindak lanjut: 4: Warga
+      Jualan di marketplace UMKM: 5: Warga
+    </pre>
+  </div>
+</div>
+
+<h3 class="pecah">Alur 7 &mdash; Belanja di UMKM dengan QRIS manual</h3>
+<span class="label-alur">FASE 3</span>
+
+<p>Tidak ada payment gateway. Tiap UMKM memasang QRIS miliknya sendiri; pembeli transfer
+lalu mengunggah bukti, dan penjual yang memverifikasi. Akibatnya <b>desa tidak pernah
+memegang uang warga</b>, tidak ada biaya per transaksi, dan tidak perlu akun merchant.</p>
+
+<div class="flow">
+  <div class="diagram" id="diagram-alur-7">
+    <pre class="mermaid">
+sequenceDiagram
+    autonumber
+    actor B as Pembeli
+    participant S as Sistem
+    actor J as Penjual UMKM
+
+    B->>S: Pilih produk, masuk keranjang
+    B->>S: Buat pesanan
+    S-->>B: Kode pesanan + QRIS milik penjual
+    Note over B: Transfer lewat aplikasi bank / e-wallet
+    B->>S: Unggah bukti bayar (foto struk)
+    S-->>J: Notifikasi bukti bayar masuk
+
+    alt Bukti cocok
+        J->>S: Verifikasi diterima
+        S-->>B: Status DIBAYAR
+        J->>S: Tandai DIPROSES_PENJUAL
+        J->>S: Tandai SELESAI
+        B->>S: Beri rating dan ulasan
+    else Bukti tidak cocok
+        J->>S: Tolak + alasan (wajib diisi)
+        S-->>B: Status DITOLAK, boleh unggah ulang
+    end
+    </pre>
+  </div>
+</div>
+
+<div class="flow">
+  <div class="diagram" id="diagram-status-pesanan">
+    <pre class="mermaid">
+stateDiagram-v2
+    [*] --> MENUNGGU_PEMBAYARAN: pesanan dibuat
+    MENUNGGU_PEMBAYARAN --> MENUNGGU_VERIFIKASI: bukti diunggah
+    MENUNGGU_PEMBAYARAN --> DIBATALKAN: lewat 24 jam
+    MENUNGGU_VERIFIKASI --> DIBAYAR: penjual menerima
+    MENUNGGU_VERIFIKASI --> DITOLAK: bukti tidak cocok
+    DITOLAK --> MENUNGGU_VERIFIKASI: unggah ulang
+    DIBAYAR --> DIPROSES_PENJUAL: pesanan disiapkan
+    DIPROSES_PENJUAL --> SELESAI
+    SELESAI --> [*]
+    </pre>
+  </div>
+</div>
+
+<div class="catatan">
+  <b>Risikonya berpindah, bukan hilang.</b> Verifikasi manual berarti bukti bayar bisa saja
+  dipalsukan atau nominalnya keliru. Yang menjaganya: bukti disimpan sebagai berkas yang
+  bisa ditinjau ulang, tiap perubahan status direkam di <code>riwayat_pesanan</code>, alasan
+  penolakan wajib diisi, dan perpindahan status dikunci agar tidak bisa melompat.
+</div>
+
+<h2 class="bab pecah">6. Tangkapan Layar Aplikasi</h2>
+
+<p>Gambar berikut diambil dari aplikasi React yang benar-benar berjalan di
+<code>http://localhost:5173</code>, bukan mockup. Halaman yang belum digarap tampil sebagai
+kerangka yang memuat daftar isi rencananya &mdash; itu memang disengaja, supaya struktur bisa
+didiskusikan lebih dulu dengan pihak desa sebelum kontennya dibangun.</p>
+
+<div class="tangkapan-blok">
+  <div class="tangkapan"><img src="../screenshots/web-beranda.png" alt="Beranda" /></div>
+  <div class="keterangan">S01 &mdash; Beranda: sambutan, statistik ringkas, layanan cepat, berita/pengumuman/agenda</div>
+</div>
+
+<div class="tangkapan-blok">
+  <div class="tangkapan"><img src="../screenshots/web-beranda-hp.png" alt="Beranda di HP" /></div>
+  <div class="keterangan">S01 &mdash; Beranda pada layar HP (390&times;844). Mayoritas warga membuka website dari ponsel</div>
+</div>
+
+<div class="tangkapan-blok">
+  <div class="tangkapan"><img src="../screenshots/web-masuk.png" alt="Halaman Masuk" /></div>
+  <div class="keterangan">Halaman Masuk &mdash; NIK + PIN, bukan NIK saja (lihat Alur 1)</div>
+</div>
+
+<div class="tangkapan-blok">
+  <div class="tangkapan"><img src="../screenshots/web-layanan.png" alt="Pelayanan Online" /></div>
+  <div class="keterangan">S04 &mdash; Pelayanan Online: 14 jenis surat, status pengajuan, dan verifikasi QR</div>
+</div>
+
+<div class="tangkapan-blok">
+  <div class="tangkapan"><img src="../screenshots/web-profil.png" alt="Profil Desa" /></div>
+  <div class="keterangan">S02 &mdash; Profil Desa dengan 13 sub-halaman</div>
+</div>
+
+<div class="tangkapan-blok">
+  <div class="tangkapan"><img src="../screenshots/web-kependudukan.png" alt="Data Kependudukan" /></div>
+  <div class="keterangan">S05 &mdash; Data Kependudukan: 15 blok statistik, seluruhnya agregat</div>
+</div>
+
+<div class="tangkapan-blok">
+  <div class="tangkapan"><img src="../screenshots/web-pengaduan.png" alt="Pengaduan Masyarakat" /></div>
+  <div class="keterangan">S08 &mdash; Pengaduan Masyarakat: 8 kategori, unggah foto, dan titik GPS</div>
+</div>
+
+<div class="tangkapan-blok">
+  <div class="tangkapan"><img src="../screenshots/web-admin.png" alt="Dashboard Perangkat Desa" /></div>
+  <div class="keterangan">D-P &mdash; Dashboard Perangkat Desa dengan 12 menu kerja</div>
+</div>
+
+<div class="tangkapan-blok">
+  <div class="tangkapan"><img src="../screenshots/web-warga.png" alt="Dashboard Warga" /></div>
+  <div class="keterangan">D-W &mdash; Dashboard Warga dengan 9 menu pribadi</div>
+</div>
+
+<h2 class="bab pecah">7. Inventaris Layar</h2>
+
+<p>Total <b>78 layar</b>: 23 halaman section, 32 sub-halaman, 21 menu dashboard,
+ditambah halaman masuk dan aktivasi.</p>
+
+<table>
+  <tr><th style="width:10%">ID</th><th style="width:32%">Layar</th><th style="width:28%">Rute</th><th style="width:15%">Akses</th><th style="width:8%">Fase</th></tr>
+  <tr><td>S01</td><td>Beranda</td><td><code>/</code></td><td>publik</td><td>1</td></tr>
+  <tr><td>S02</td><td>Profil Desa</td><td><code>/profil</code></td><td>publik</td><td>1</td></tr>
+  <tr><td>S03</td><td>Pemerintahan Desa</td><td><code>/pemerintahan</code></td><td>publik</td><td>1</td></tr>
+  <tr><td>S04</td><td>Pelayanan Online</td><td><code>/layanan</code></td><td>publik</td><td>1</td></tr>
+  <tr><td>S05</td><td>Data Kependudukan</td><td><code>/kependudukan</code></td><td>publik</td><td>1</td></tr>
+  <tr><td>S06</td><td>Transparansi Keuangan</td><td><code>/keuangan</code></td><td>publik</td><td>2</td></tr>
+  <tr><td>S07</td><td>Pembangunan Desa</td><td><code>/pembangunan</code></td><td>publik</td><td>2</td></tr>
+  <tr><td>S08</td><td>Pengaduan Masyarakat</td><td><code>/pengaduan</code></td><td>publik</td><td>2</td></tr>
+  <tr><td>S09</td><td>UMKM Desa</td><td><code>/umkm</code></td><td>publik</td><td>3</td></tr>
+  <tr><td>S10</td><td>BumDes</td><td><code>/bumdes</code></td><td>publik</td><td>3</td></tr>
+  <tr><td>S11</td><td>Pendidikan</td><td><code>/pendidikan</code></td><td>publik</td><td>4</td></tr>
+  <tr><td>S12</td><td>Kesehatan</td><td><code>/kesehatan</code></td><td>publik</td><td>4</td></tr>
+  <tr><td>S13</td><td>Pertanian</td><td><code>/pertanian</code></td><td>publik</td><td>3</td></tr>
+  <tr><td>S14</td><td>Peternakan</td><td><code>/peternakan</code></td><td>publik</td><td>3</td></tr>
+  <tr><td>S15</td><td>Perikanan</td><td><code>/perikanan</code></td><td>publik</td><td>3</td></tr>
+  <tr><td>S16</td><td>Bantuan Sosial</td><td><code>/bantuan-sosial</code></td><td>publik</td><td>3</td></tr>
+  <tr><td>S17</td><td>Lowongan Kerja</td><td><code>/lowongan</code></td><td>publik</td><td>3</td></tr>
+  <tr><td>S18</td><td>Kalender Desa</td><td><code>/kalender</code></td><td>publik</td><td>4</td></tr>
+  <tr><td>S19</td><td>Galeri</td><td><code>/galeri</code></td><td>publik</td><td>4</td></tr>
+  <tr><td>S20</td><td>Peta Desa Interaktif</td><td><code>/peta</code></td><td>publik</td><td>4</td></tr>
+  <tr><td>S21</td><td>Download Center</td><td><code>/download</code></td><td>publik</td><td>2</td></tr>
+  <tr><td>S22</td><td>PPID</td><td><code>/ppid</code></td><td>publik</td><td>2</td></tr>
+  <tr><td>S23</td><td>Kontak</td><td><code>/kontak</code></td><td>publik</td><td>4</td></tr>
+  <tr><td>D-P</td><td>Dashboard Perangkat Desa</td><td><code>/admin</code></td><td>perangkat</td><td>1</td></tr>
+  <tr><td>D-W</td><td>Dashboard Warga</td><td><code>/warga</code></td><td>warga</td><td>1</td></tr>
+</table>
+
+<h3>Menu Dashboard Perangkat Desa</h3>
+<p>Manajemen penduduk &middot; Manajemen surat &middot; Persetujuan surat &middot; Keuangan &middot; Pembangunan &middot;
+Agenda &middot; Berita &middot; Galeri &middot; Arsip digital &middot; Absensi perangkat &middot; Inventaris aset &middot;
+Statistik real-time</p>
+
+<h3>Menu Dashboard Warga</h3>
+<p>Data pribadi &middot; Riwayat surat &middot; Status bantuan &middot; Pajak desa &middot; Tagihan &middot; Pengaduan &middot;
+Riwayat kegiatan &middot; Sertifikat pelatihan &middot; UMKM saya</p>
+
+<h2 class="bab pecah">8. Aturan yang Tidak Boleh Dilanggar</h2>
+
+<table>
+  <tr><th style="width:45%">Aturan</th><th>Alasan</th></tr>
+  <tr><td>NIK dan nomor KK dienkripsi at rest (AES-256-GCM), pencarian lewat kolom HMAC</td><td>Bocornya dump database tidak langsung berarti bocornya identitas seluruh warga desa</td></tr>
+  <tr><td>Statistik publik selalu agregat</td><td>Halaman Data Kependudukan tidak boleh bisa dipakai menelusuri individu</td></tr>
+  <tr><td>Tidak ada endpoint publik yang menerima NIK sebagai input</td><td>Mencegah penyisiran NIK untuk memetakan warga</td></tr>
+  <tr><td>Access token 15 menit + refresh token</td><td>Sesi panjang di perangkat bersama (HP pinjaman, warnet) berisiko</td></tr>
+  <tr><td>Rate limit ketat pada endpoint autentikasi</td><td>Mencegah percobaan NIK/PIN massal</td></tr>
+  <tr><td>Setiap akses data penduduk masuk audit log</td><td>Kewajiban UU PDP No. 27/2022 dan pelindung perangkat desa</td></tr>
+  <tr><td>Alasan penolakan surat wajib diisi</td><td>Warga berhak tahu apa yang harus diperbaiki</td></tr>
+</table>
+
+<h2 class="bab pecah">9. Keputusan Pihak Desa</h2>
+
+<p>Lima pertanyaan terbuka pada versi awal storyboard sudah dijawab. Berikut keputusannya
+beserta pengaruhnya terhadap rancangan.</p>
+
+<table>
+  <tr><th style="width:22%">Topik</th><th style="width:34%">Keputusan</th><th>Pengaruhnya</th></tr>
+  <tr>
+    <td><b>Pembayaran QRIS</b></td>
+    <td>Manual. Tiap UMKM memasang QRIS sendiri; pembeli unggah bukti bayar, penjual memverifikasi</td>
+    <td>Tidak perlu payment gateway, akun merchant, maupun biaya per transaksi. Desa tidak pernah memegang uang warga. Lihat Alur 7</td>
+  </tr>
+  <tr>
+    <td><b>Tanda tangan</b></td>
+    <td>QR verifikasi mandiri milik desa</td>
+    <td>Tidak perlu mendaftar ke PSrE. Surat tetap ditandatangani basah; QR mencegah pemalsuan. Bukan TTE tersertifikasi menurut PP 71/2019</td>
+  </tr>
+  <tr>
+    <td><b>Data penduduk</b></td>
+    <td>Mengikuti format baku Kartu Keluarga / Dukcapil</td>
+    <td>Kolom dan daftar nilainya dibakukan, termasuk urutan kolom CSV untuk impor. Statistik tidak pecah karena beda penulisan</td>
+  </tr>
+  <tr>
+    <td><b>Nomor &amp; isi surat</b></td>
+    <td>Fleksibel, bisa diubah kemudian</td>
+    <td>Format nomor, redaksi surat, field yang harus diisi pemohon, dan lampiran wajib semuanya disunting dari dashboard &mdash; tanpa mengubah kode</td>
+  </tr>
+  <tr>
+    <td><b>Data desa</b></td>
+    <td>Bisa ditambah, diubah, dihapus</td>
+    <td>CRUD penuh dari Dashboard Perangkat. Kecuali data penduduk: tidak dihapus, melainkan ditandai meninggal/pindah agar riwayat surat tetap tertelusur</td>
+  </tr>
+</table>
+
+<h3>Yang masih perlu disiapkan pihak desa</h3>
+
+<p>Bukan lagi pertanyaan teknis, melainkan bahan:</p>
+
+<ul>
+  <li>Sejarah desa, visi &amp; misi, dan sambutan kepala desa</li>
+  <li>Foto serta uraian tugas tiap perangkat</li>
+  <li>Data penduduk awal dalam format CSV yang sudah dibakukan</li>
+  <li>Contoh setiap jenis surat yang berlaku sekarang, sebagai acuan redaksi template</li>
+  <li>Nomor WA desa, email, dan akun media sosial resmi</li>
+</ul>
+
+<div class="kaki">
+  Storyboard ini dibangkitkan dari registry <code>packages/shared/src/constants/sections.ts</code>
+  pada repositori proyek. Perubahan struktur cukup dilakukan di file itu &mdash; rute aplikasi,
+  menu navigasi, dan dokumen ini ikut menyesuaikan.
+</div>
+
+</div>
+
+<script src="./mermaid.min.js"></script>
+<script>
+  document.getElementById('tanggal').textContent =
+    new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    themeVariables: {
+      primaryColor: '#e8f4ed',
+      primaryTextColor: '#14432f',
+      primaryBorderColor: '#348f64',
+      lineColor: '#4b7c63',
+      secondaryColor: '#f8fbf9',
+      tertiaryColor: '#ffffff',
+      fontFamily: 'Segoe UI, Inter, system-ui, sans-serif',
+      fontSize: '15px',
+
+      // Aktor & partisipan: latar terang, teks gelap. Stick figure menulis
+      // namanya tanpa kotak, jadi teks putih akan hilang di latar putih.
+      actorBkg: '#dcf0e3',
+      actorTextColor: '#14432f',
+      actorBorder: '#348f64',
+      actorLineColor: '#6b8f7d',
+
+      signalColor: '#374151',
+      signalTextColor: '#1f2937',
+      sequenceNumberColor: '#ffffff',
+
+      // Blok alt/loop pada sequence diagram
+      labelBoxBkgColor: '#1c5b41',
+      labelBoxBorderColor: '#14432f',
+      labelTextColor: '#ffffff',
+      loopTextColor: '#14432f',
+
+      noteBkgColor: '#fef3c7',
+      noteTextColor: '#78350f',
+      noteBorderColor: '#f59e0b',
+
+      clusterBkg: '#f4faf6',
+      clusterBorder: '#8dcaa9',
+      titleColor: '#14432f'
+    },
+    flowchart: { curve: 'basis', padding: 16, nodeSpacing: 45, rankSpacing: 55, useMaxWidth: true },
+    sequence: { useMaxWidth: true, wrap: true, width: 190, actorMargin: 80, messageFontSize: 14 },
+    journey: { useMaxWidth: true },
+    state: { useMaxWidth: true }
+  });
+</script>
+</body>
+</html>

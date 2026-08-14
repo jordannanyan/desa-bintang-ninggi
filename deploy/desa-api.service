@@ -1,0 +1,38 @@
+# Unit systemd untuk API Express.
+#
+# Dipasang otomatis oleh deploy/setup-vps.sh ({{APP_DIR}} dan {{RUN_USER}}
+# diisi di sana). Tidak perlu PM2 — systemd sudah menangani restart otomatis,
+# start saat boot, dan pencatatan log.
+#
+#   sudo systemctl status desa-api      lihat kondisi
+#   sudo journalctl -u desa-api -f      ikuti log berjalan
+#   sudo systemctl restart desa-api     nyalakan ulang
+
+[Unit]
+Description=API Website Desa Bintang Ninggi I
+Documentation=file://{{APP_DIR}}/README.md
+After=network.target mysql.service
+Wants=mysql.service
+
+[Service]
+Type=simple
+User={{RUN_USER}}
+WorkingDirectory={{APP_DIR}}/apps/api
+EnvironmentFile={{APP_DIR}}/apps/api/.env
+ExecStart=/usr/bin/node dist/server.js
+
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=desa-api
+
+# Pengamanan: proses hanya boleh menulis ke folder unggahan.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths={{APP_DIR}}/apps/api/uploads
+
+[Install]
+WantedBy=multi-user.target

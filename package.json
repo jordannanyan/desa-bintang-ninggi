@@ -1,0 +1,31 @@
+{
+  "name": "desa-bintang-ninggi",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Website Desa Bintang Ninggi I — React + Express + MySQL",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=@desa/api & npm run dev --workspace=@desa/web",
+    "dev:api": "npm run dev --workspace=@desa/api",
+    "dev:web": "npm run dev --workspace=@desa/web",
+    "build": "npm run build --workspace=@desa/shared && npm run build --workspace=@desa/api && npm run build --workspace=@desa/web",
+    "db:migrate": "npm run db:migrate --workspace=@desa/api",
+    "db:seed": "npm run db:seed --workspace=@desa/api",
+    "db:studio": "npm run db:studio --workspace=@desa/api",
+    "storyboard": "tsx scripts/generate-storyboard.ts",
+    "storyboard:render": "node scripts/render-storyboard.mjs",
+    "storyboard:screenshot": "node scripts/screenshot-web.mjs",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^23.11.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

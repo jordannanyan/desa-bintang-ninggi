@@ -1,0 +1,14 @@
+node_modules/
+dist/
+build/
+.env
+.env.*
+!.env.example
+uploads/
+*.log
+.DS_Store
+.vscode/
+coverage/
+apps/api/prisma/dev.db*
+.password-admin-awal.txt
+cek*.mjs
