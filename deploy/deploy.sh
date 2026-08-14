@@ -54,6 +54,21 @@ biru "== Memasang dependensi =="
 # daripada `npm install`.
 npm ci
 
+# Penjaga untuk bug npm dengan dependensi opsional per-platform (npm/cli#4828).
+# Lockfile dibuat di Windows; bila biner rollup untuk platform ini belum
+# tercatat di sana, `vite build` gagal jauh di belakang dengan pesan yang tidak
+# menyebut penyebab sebenarnya. Lebih baik ketahuan di sini.
+if ! node -e "require('rollup')" >/dev/null 2>&1; then
+  BINER="@rollup/rollup-$(node -p 'process.platform')-$(node -p 'process.arch')-gnu"
+  echo
+  echo "Biner rollup untuk platform ini tidak ada: ${BINER}" >&2
+  echo "Tambahkan ke optionalDependencies di apps/web/package.json," >&2
+  echo "jalankan 'npm install' di komputer pengembangan, lalu commit lockfile-nya." >&2
+  echo "Penanganan sementara di server ini:" >&2
+  echo "  npm install --no-save ${BINER}" >&2
+  exit 1
+fi
+
 # ---- 3. Siapkan yang dibutuhkan langkah berikutnya -----------
 # HARUS sebelum migrasi dan seed. Berkas seed mengimpor @desa/shared dan
 # memakai Prisma Client; keduanya belum ada sampai langkah ini dijalankan.

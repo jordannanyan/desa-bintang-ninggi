@@ -23,6 +23,11 @@
     "recharts": "^2.13.3",
     "zod": "^3.23.8"
   },
+  "_catatan_optionalDependencies": "Biner rollup untuk Linux dideklarasikan eksplisit agar tercatat di package-lock.json. Lockfile dibuat di Windows, dan npm hanya mencatat biner platform tempat instalasi berjalan (npm/cli#4828) — akibatnya `npm ci` di VPS Linux gagal dengan 'Cannot find module @rollup/rollup-linux-x64-gnu'. Deklarasi ini dilewati otomatis saat instalasi di Windows karena paketnya menandai os=linux.",
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "^4.62.4",
+    "@rollup/rollup-linux-arm64-gnu": "^4.62.4"
+  },
   "devDependencies": {
     "@types/leaflet": "^1.9.14",
     "@types/react": "^18.3.12",
