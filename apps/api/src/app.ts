@@ -39,9 +39,53 @@ export function buatApp() {
 
   app.get('/health', (_req, res) => res.json({ ok: true, data: { status: 'sehat' } }));
 
-  // Login dan pengajuan surat dibatasi agar NIK tidak bisa dicoba-coba massal.
-  app.use('/api/auth', rateLimit({ windowMs: 15 * 60_000, limit: 20, standardHeaders: true }));
-  app.use('/api', rateLimit({ windowMs: 60_000, limit: 120, standardHeaders: true }));
+  // ── Pembatasan laju ──
+  //
+  // Pembatas ketat HANYA dikenakan pada endpoint yang memeriksa kredensial.
+  // Sebelumnya seluruh awalan /api/auth ikut terkena, termasuk /auth/refresh
+  // yang dipanggil setiap kali halaman dimuat. Akibatnya bukan teoretis:
+  // kantor desa berbagi satu IP publik, sehingga tiga perangkat desa yang
+  // masing-masing memuat halaman tujuh kali sudah menghabiskan jatah seluruh
+  // kantor selama 15 menit, dan semuanya tampak ter-logout tanpa sebab jelas.
+  const batasKredensial = rateLimit({
+    windowMs: 15 * 60_000,
+    limit: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    // Hanya percobaan yang GAGAL yang dihitung. Orang yang berhasil masuk
+    // tidak pernah kehabisan jatah, sementara penebak PIN tetap tertahan.
+    skipSuccessfulRequests: true,
+    message: {
+      ok: false,
+      error: {
+        code: 'TERLALU_BANYAK_PERCOBAAN',
+        message: 'Terlalu banyak percobaan masuk. Coba lagi dalam 15 menit.',
+      },
+    },
+  });
+
+  for (const jalur of ['/api/auth/login', '/api/auth/login-perangkat', '/api/auth/aktivasi']) {
+    app.use(jalur, batasKredensial);
+  }
+
+  // Batas umum. Angkanya diperlonggar dari 120 karena satu IP publik di sini
+  // mewakili seluruh kantor desa, bukan satu orang.
+  app.use(
+    '/api',
+    rateLimit({
+      windowMs: 60_000,
+      limit: 300,
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: {
+        ok: false,
+        error: {
+          code: 'TERLALU_BANYAK_PERMINTAAN',
+          message: 'Terlalu banyak permintaan. Tunggu sebentar lalu coba lagi.',
+        },
+      },
+    }),
+  );
 
   app.use('/api', apiRoutes);
 

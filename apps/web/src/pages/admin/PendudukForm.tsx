@@ -197,10 +197,23 @@ export function PendudukForm() {
             </Bidang>
 
             <Bidang label="Tanggal lahir" wajib galat={errors.tanggalLahir?.message}>
+              {/* min dan max membuat peramban ikut menolak tahun yang keliru,
+                  sebelum permintaannya sempat dikirim ke server. */}
               <input
                 type="date"
+                min="1900-01-01"
+                max={new Date().toISOString().slice(0, 10)}
                 className={gayaInput}
-                {...register('tanggalLahir', { required: 'Tanggal lahir wajib diisi' })}
+                {...register('tanggalLahir', {
+                  required: 'Tanggal lahir wajib diisi',
+                  validate: (v) => {
+                    const t = new Date(v).getFullYear();
+                    if (t < 1900 || t > new Date().getFullYear()) {
+                      return 'Tanggal lahir tidak masuk akal, periksa kembali tahunnya';
+                    }
+                    return true;
+                  },
+                })}
               />
             </Bidang>
           </div>

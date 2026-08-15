@@ -25,7 +25,15 @@ export const pendudukSchema = z.object({
   nama: z.string().min(2, 'Nama minimal 2 karakter').max(120),
   jenisKelamin: z.enum(['LAKI_LAKI', 'PEREMPUAN']),
   tempatLahir: z.string().min(2).max(80),
-  tanggalLahir: z.coerce.date().max(new Date(), 'Tanggal lahir tidak boleh di masa depan'),
+  /**
+   * Batas bawah sama pentingnya dengan batas atas. Tanpa itu, salah ketik tahun
+   * seperti 0190 atau 1090 lolos begitu saja - datanya tersimpan, lalu muncul
+   * sebagai penduduk berusia ribuan tahun di statistik desa.
+   */
+  tanggalLahir: z.coerce
+    .date()
+    .min(new Date('1900-01-01'), 'Tanggal lahir tidak masuk akal, periksa kembali tahunnya')
+    .max(new Date(), 'Tanggal lahir tidak boleh di masa depan'),
   agama: z.enum(AGAMA),
   pendidikan: z.enum(PENDIDIKAN),
   pekerjaan: z.string().min(2).max(60),

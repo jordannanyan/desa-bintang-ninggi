@@ -120,7 +120,13 @@ export function AjukanSurat() {
             />
           </div>
 
-          {jenis.fieldTambahan?.map((f) => (
+          {/* "keperluan" disaring keluar: ia sudah menjadi kolom tersendiri di
+              atas. Beberapa template lama mencantumkannya lagi di fieldTambahan,
+              dan tanpa saringan ini warga melihat dua kotak Keperluan sekaligus
+              — dua-duanya pun memakai id HTML yang sama. Disaring di sini, bukan
+              hanya diperbaiki di data, karena template sudah tersimpan di
+              database server dan tidak ikut berubah saat kode diperbarui. */}
+          {jenis.fieldTambahan?.filter((f) => f !== 'keperluan').map((f) => (
             <div key={f}>
               <label htmlFor={f} className="mb-1 block text-sm font-medium text-slate-700">
                 {labelDari(f)}
