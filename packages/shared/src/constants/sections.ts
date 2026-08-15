@@ -560,6 +560,7 @@ export const DASHBOARD_PERANGKAT = {
     { label: 'Manajemen surat', path: '/surat' },
     { label: 'Persetujuan surat', path: '/surat/persetujuan' },
     { label: 'Keuangan', path: '/keuangan' },
+    { label: 'Pengaduan', path: '/pengaduan' },
     { label: 'Pembangunan', path: '/pembangunan' },
     { label: 'Agenda', path: '/agenda' },
     { label: 'Berita', path: '/berita' },

@@ -8,6 +8,8 @@ import {
   pengumumanRoutes,
 } from '../modules/konten/konten.routes.js';
 import { berandaRoutes, profilRoutes } from '../modules/profil/profil.routes.js';
+import { berkasRoutes } from '../modules/berkas/berkas.routes.js';
+import { pengaduanRoutes } from '../modules/pengaduan/pengaduan.routes.js';
 import { loginOpsional } from '../middleware/auth.js';
 import { daftarStub, type PetaEndpoint } from './stub.js';
 
@@ -27,6 +29,8 @@ apiRoutes.use('/layanan/surat', suratRoutes);
 apiRoutes.use('/berita', beritaRoutes);
 apiRoutes.use('/pengumuman', pengumumanRoutes);
 apiRoutes.use('/agenda', agendaRoutes);
+apiRoutes.use('/berkas', berkasRoutes);
+apiRoutes.use('/pengaduan', pengaduanRoutes);
 
 const petaSiap: PetaEndpoint[] = [
   { section: 'Autentikasi', no: 0, fase: 1, basis: '/api/auth', status: 'siap' },
@@ -38,6 +42,8 @@ const petaSiap: PetaEndpoint[] = [
   { section: 'Berita', no: 1, fase: 1, basis: '/api/berita', status: 'siap' },
   { section: 'Pengumuman', no: 1, fase: 1, basis: '/api/pengumuman', status: 'siap' },
   { section: 'Agenda', no: 1, fase: 1, basis: '/api/agenda', status: 'siap' },
+  { section: 'Berkas Unggahan', no: 0, fase: 2, basis: '/api/berkas', status: 'siap' },
+  { section: 'Pengaduan Masyarakat', no: 8, fase: 2, basis: '/api/pengaduan', status: 'siap' },
 ];
 
 // ── Placeholder untuk section lain, dibangkitkan dari registry @desa/shared ──

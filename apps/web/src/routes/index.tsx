@@ -21,6 +21,10 @@ import { ProfilDesa } from '../pages/ProfilDesa';
 import { BeritaList, BeritaDetail } from '../pages/Berita';
 import { Agenda, Pengumuman } from '../pages/PengumumanAgenda';
 import { Aktivasi } from '../pages/Aktivasi';
+import { Pengaduan } from '../pages/Pengaduan';
+import { BuatPengaduan } from '../pages/BuatPengaduan';
+import { LacakPengaduan } from '../pages/LacakPengaduan';
+import { PengaduanList, PengaduanDetail } from '../pages/admin/PengaduanKelola';
 import { AkunWarga } from '../pages/admin/AkunWarga';
 import { BeritaKelola } from '../pages/admin/BeritaKelola';
 import { AgendaKelola } from '../pages/admin/AgendaKelola';
@@ -35,6 +39,8 @@ const HALAMAN_ASLI: Record<string, JSX.Element> = {
   '/layanan': <Layanan />,
   '/profil': <ProfilDesa />,
   '/berita': <BeritaList />,
+  '/pengaduan': <Pengaduan />,
+  '/admin/pengaduan': <PengaduanList />,
   '/pengumuman': <Pengumuman />,
   '/agenda': <Agenda />,
   '/admin/penduduk': <PendudukList />,
@@ -137,6 +143,7 @@ const ruteIsiDashboard = (dash: typeof DASHBOARD_PERANGKAT | typeof DASHBOARD_WA
           { path: 'penduduk/baru', element: <PendudukForm /> },
           { path: 'penduduk/:id', element: <PendudukForm /> },
           { path: 'akun/:id', element: <AkunWarga /> },
+          { path: 'pengaduan/:id', element: <PengaduanDetail /> },
           { path: 'surat/:id', element: <SuratDetail /> },
           { path: 'profil-desa', element: <ProfilDesaForm /> },
         ]
@@ -161,6 +168,9 @@ export const router = createBrowserRouter([
 
       { path: 'layanan/ajukan/:kode', element: <AjukanSurat /> },
       { path: 'berita/:slug', element: <BeritaDetail /> },
+      { path: 'pengaduan/buat', element: <BuatPengaduan /> },
+      { path: 'pengaduan/lacak', element: <LacakPengaduan /> },
+      { path: 'pengaduan/lacak/:kode', element: <LacakPengaduan /> },
       ...rutePublik,
       { path: '*', element: <Navigate to="/" replace /> },
     ],
