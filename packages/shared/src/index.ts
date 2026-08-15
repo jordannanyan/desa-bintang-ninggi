@@ -9,6 +9,7 @@ export * from './schemas/konten.js';
 export * from './schemas/profil.js';
 export * from './schemas/keuangan.js';
 export * from './schemas/dokumen.js';
+export * from './schemas/sektor.js';
 export * from './schemas/auth.js';
 export * from './schemas/surat.js';
 export * from './schemas/pengaduan.js';

@@ -29,6 +29,22 @@ import { Keuangan } from '../pages/Keuangan';
 import { Pembangunan, ProyekDetail } from '../pages/Pembangunan';
 import { PemerintahanDesa, Ppid, DownloadCenter } from '../pages/Dokumen';
 import { Umkm } from '../pages/Umkm';
+import {
+  BumDes,
+  Kesehatan,
+  Pendidikan,
+  Perikanan,
+  Pertanian,
+  Peternakan,
+} from '../pages/Sektor';
+import {
+  BantuanSosial,
+  KalenderDesa,
+  Kontak,
+  Lowongan,
+  StatusBantuan,
+} from '../pages/Lainnya';
+import { Galeri, Peta } from '../pages/Peta';
 import { UmkmToko } from '../pages/UmkmToko';
 import { PesananSaya, PesananDetail } from '../pages/warga/PesananSaya';
 import { TokoSaya } from '../pages/warga/TokoSaya';
@@ -68,6 +84,19 @@ const HALAMAN_ASLI: Record<string, JSX.Element> = {
   '/warga/surat': <SuratSaya />,
   '/umkm': <Umkm />,
   '/warga/umkm': <TokoSaya />,
+  '/bumdes': <BumDes />,
+  '/pertanian': <Pertanian />,
+  '/peternakan': <Peternakan />,
+  '/perikanan': <Perikanan />,
+  '/pendidikan': <Pendidikan />,
+  '/kesehatan': <Kesehatan />,
+  '/lowongan': <Lowongan />,
+  '/bantuan-sosial': <BantuanSosial />,
+  '/kalender': <KalenderDesa />,
+  '/galeri': <Galeri />,
+  '/peta': <Peta />,
+  '/kontak': <Kontak />,
+  '/warga/bantuan': <StatusBantuan />,
 };
 
 /**

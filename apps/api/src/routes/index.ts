@@ -5,6 +5,7 @@ import { pendudukRoutes, wilayahRoutes } from '../modules/penduduk/penduduk.rout
 import {
   agendaRoutes,
   beritaRoutes,
+  galeriRoutes,
   pengumumanRoutes,
 } from '../modules/konten/konten.routes.js';
 import { berandaRoutes, profilRoutes } from '../modules/profil/profil.routes.js';
@@ -14,6 +15,14 @@ import { keuanganRoutes } from '../modules/keuangan/keuangan.routes.js';
 import { pembangunanRoutes } from '../modules/pembangunan/pembangunan.routes.js';
 import { dokumenRoutes } from '../modules/dokumen/dokumen.routes.js';
 import { umkmRoutes } from '../modules/umkm/umkm.routes.js';
+import {
+  bantuanRoutes,
+  fasilitasRoutes,
+  hargaRoutes,
+  informasiRoutes,
+  lowonganRoutes,
+  petaRoutes,
+} from '../modules/sektor/sektor.routes.js';
 import { loginOpsional } from '../middleware/auth.js';
 import { daftarStub, type PetaEndpoint } from './stub.js';
 
@@ -33,12 +42,19 @@ apiRoutes.use('/layanan/surat', suratRoutes);
 apiRoutes.use('/berita', beritaRoutes);
 apiRoutes.use('/pengumuman', pengumumanRoutes);
 apiRoutes.use('/agenda', agendaRoutes);
+apiRoutes.use('/galeri', galeriRoutes);
 apiRoutes.use('/berkas', berkasRoutes);
 apiRoutes.use('/pengaduan', pengaduanRoutes);
 apiRoutes.use('/keuangan', keuanganRoutes);
 apiRoutes.use('/pembangunan', pembangunanRoutes);
 apiRoutes.use('/dokumen', dokumenRoutes);
 apiRoutes.use('/umkm', umkmRoutes);
+apiRoutes.use('/informasi', informasiRoutes);
+apiRoutes.use('/fasilitas', fasilitasRoutes);
+apiRoutes.use('/harga-komoditas', hargaRoutes);
+apiRoutes.use('/lowongan', lowonganRoutes);
+apiRoutes.use('/bantuan-sosial', bantuanRoutes);
+apiRoutes.use('/peta', petaRoutes);
 
 const petaSiap: PetaEndpoint[] = [
   { section: 'Autentikasi', no: 0, fase: 1, basis: '/api/auth', status: 'siap' },
@@ -56,6 +72,12 @@ const petaSiap: PetaEndpoint[] = [
   { section: 'Pembangunan Desa', no: 7, fase: 2, basis: '/api/pembangunan', status: 'siap' },
   { section: 'Dokumen (PPID + Unduhan)', no: 21, fase: 2, basis: '/api/dokumen', status: 'siap' },
   { section: 'UMKM Desa', no: 9, fase: 3, basis: '/api/umkm', status: 'siap' },
+  { section: 'Informasi Sektoral', no: 10, fase: 3, basis: '/api/informasi', status: 'siap' },
+  { section: 'Fasilitas Desa', no: 12, fase: 4, basis: '/api/fasilitas', status: 'siap' },
+  { section: 'Harga Komoditas', no: 13, fase: 3, basis: '/api/harga-komoditas', status: 'siap' },
+  { section: 'Lowongan Kerja', no: 17, fase: 3, basis: '/api/lowongan', status: 'siap' },
+  { section: 'Bantuan Sosial', no: 16, fase: 3, basis: '/api/bantuan-sosial', status: 'siap' },
+  { section: 'Peta Desa Interaktif', no: 20, fase: 4, basis: '/api/peta', status: 'siap' },
 ];
 
 // ── Placeholder untuk section lain, dibangkitkan dari registry @desa/shared ──

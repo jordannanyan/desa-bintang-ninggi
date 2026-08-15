@@ -10,6 +10,25 @@ const SUDAH_ADA = new Set([
   'keuangan',
   'pembangunan',
   'umkm',
+  'bumdes',
+  'pertanian',
+  'peternakan',
+  'perikanan',
+  'pendidikan',
+  'kesehatan',
+  'lowongan',
+  'bantuan-sosial',
+  'peta',
+  'kalender',
+  'galeri',
+  'kontak',
+  // Ketiganya dilayani /api/dokumen dengan penyaringan `jenis`, bukan prefix
+  // sendiri. Tanpa dicantumkan di sini, peta endpoint menyebutnya "kerangka"
+  // padahal halamannya sudah berfungsi.
+  'pemerintahan',
+  'download',
+  'ppid',
+  'beranda',
 ]);
 
 /**

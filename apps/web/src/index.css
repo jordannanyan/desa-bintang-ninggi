@@ -1,3 +1,8 @@
+/* Gaya bawaan Leaflet. Diimpor di sini, bukan lewat dynamic import di dalam
+   komponen: TypeScript tidak mengenali impor berkas CSS, dan Vite tetap
+   memisahkannya ke berkas gaya yang sama. */
+@import 'leaflet/dist/leaflet.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

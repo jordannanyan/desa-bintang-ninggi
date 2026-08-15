@@ -347,6 +347,9 @@ model Berkas {
   qrisUmkm       Umkm[]     @relation("QrisUmkm")
   fotoProduk     Produk[]   @relation("FotoProduk")
   buktiBayar     BuktiBayar[] @relation("BuktiBayar")
+  gambarInformasi   InformasiSektor[] @relation("GambarInformasi")
+  lampiranInformasi InformasiSektor[] @relation("LampiranInformasi")
+  fotoFasilitas     Fasilitas[]       @relation("FotoFasilitas")
 
   dibuatPada DateTime @default(now())
 
@@ -959,9 +962,135 @@ model Ulasan {
 }
 
 // ─────────────────────────────────────────────────────────────
-// TODO Fase 3 — UnitUsahaBumdes, LaporanBumdes, SewaAlat,
-//               HargaKomoditas, JadwalTanam, PenyuluhanPertanian,
-//               VaksinTernak, BibitIkan, Lowongan
-// TODO Fase 4 — FasilitasPendidikan, Beasiswa, Posyandu, JadwalImunisasi,
-//               JadwalDokter, FiturPeta (GeoJSON layer)
+// INFORMASI SEKTORAL
+//
+// BumDes, Pertanian, Peternakan, Perikanan, Pendidikan, Kesehatan, dan
+// Ketenagakerjaan sebenarnya membutuhkan bentuk data yang sama: informasi
+// tertulis, daftar fasilitas, jadwal, dan harga komoditas. Membuat tujuh
+// skema terpisah hanya menghasilkan tujuh modul setengah jadi dan tujuh
+// halaman pengelolaan yang membingungkan. Yang dipakai di sini empat model
+// bersama, dibedakan lewat kolom `sektor`.
 // ─────────────────────────────────────────────────────────────
+
+enum SektorInformasi {
+  BUMDES
+  PERTANIAN
+  PETERNAKAN
+  PERIKANAN
+  PENDIDIKAN
+  KESEHATAN
+  KETENAGAKERJAAN
+}
+
+/// Informasi tertulis: profil BumDes, program bantuan pupuk, jadwal tanam,
+/// keterangan beasiswa, penjelasan stunting, dan sejenisnya.
+model InformasiSektor {
+  id       String          @id @default(uuid())
+  sektor   SektorInformasi
+  /// Pengelompokan bebas yang ditentukan perangkat desa, mis. "Unit Usaha",
+  /// "Bantuan", "Penyuluhan", "Beasiswa". Sengaja teks, bukan enum: tiap
+  /// desa punya istilah sendiri dan tidak perlu menunggu rilis baru.
+  kategori String          @db.VarChar(80)
+  judul    String          @db.VarChar(200)
+  isi      String          @db.Text
+
+  gambarId String?
+  gambar   Berkas? @relation("GambarInformasi", fields: [gambarId], references: [id], onDelete: SetNull)
+  lampiranId String?
+  lampiran   Berkas? @relation("LampiranInformasi", fields: [lampiranId], references: [id], onDelete: SetNull)
+
+  urutan Int     @default(0)
+  terbit Boolean @default(true)
+
+  dibuatPada     DateTime @default(now())
+  diperbaruiPada DateTime @updatedAt
+
+  @@index([sektor, terbit])
+  @@map("informasi_sektor")
+}
+
+enum JenisFasilitas {
+  PAUD
+  SD
+  POSYANDU
+  PUSTU
+  PUSKESMAS
+  PERPUSTAKAAN
+  KANTOR_DESA
+  BALAI_DESA
+  MASJID
+  GEREJA
+  PASAR
+  LAPANGAN
+  IRIGASI
+  LAINNYA
+}
+
+/// Fasilitas desa. Menopang section Pendidikan, Kesehatan, dan sekaligus
+/// menjadi sumber titik untuk Peta Desa Interaktif.
+model Fasilitas {
+  id      String         @id @default(uuid())
+  jenis   JenisFasilitas
+  nama    String         @db.VarChar(150)
+  alamat  String?        @db.VarChar(255)
+  latitude  Decimal? @db.Decimal(10, 7)
+  longitude Decimal? @db.Decimal(10, 7)
+  kontak         String? @db.VarChar(60)
+  jamOperasional String? @db.VarChar(120)
+  keterangan     String? @db.Text
+
+  fotoId String?
+  foto   Berkas? @relation("FotoFasilitas", fields: [fotoId], references: [id], onDelete: SetNull)
+
+  aktif Boolean @default(true)
+
+  dibuatPada DateTime @default(now())
+
+  @@index([jenis, aktif])
+  @@map("fasilitas")
+}
+
+/// Harga komoditas yang dicatat berkala. Disimpan sebagai deret waktu, bukan
+/// satu angka yang ditimpa, supaya warga bisa melihat arah pergerakannya.
+model HargaKomoditas {
+  id        String          @id @default(uuid())
+  sektor    SektorInformasi
+  komoditas String          @db.VarChar(100)
+  satuan    String          @db.VarChar(30)
+  harga     Decimal         @db.Decimal(15, 2)
+  tanggal   DateTime        @db.Date
+  sumber    String?         @db.VarChar(120)
+  catatan   String?         @db.VarChar(255)
+
+  dibuatPada DateTime @default(now())
+
+  @@unique([sektor, komoditas, tanggal])
+  @@index([sektor, tanggal])
+  @@map("harga_komoditas")
+}
+
+enum JenisLowongan {
+  LOWONGAN
+  MAGANG
+  PELATIHAN
+  REKRUTMEN
+}
+
+model Lowongan {
+  id          String        @id @default(uuid())
+  jenis       JenisLowongan @default(LOWONGAN)
+  judul       String        @db.VarChar(200)
+  penyelenggara String      @db.VarChar(150)
+  deskripsi   String        @db.Text
+  persyaratan String?       @db.Text
+  lokasi      String?       @db.VarChar(150)
+  imbalan     String?       @db.VarChar(120)
+  kontak      String?       @db.VarChar(150)
+  batasLamar  DateTime?     @db.Date
+  aktif       Boolean       @default(true)
+
+  dibuatPada DateTime @default(now())
+
+  @@index([jenis, aktif])
+  @@map("lowongan")
+}
