@@ -55,17 +55,37 @@ biru "== Memasang dependensi =="
 npm ci
 
 # Penjaga untuk bug npm dengan dependensi opsional per-platform (npm/cli#4828).
-# Lockfile dibuat di Windows; bila biner rollup untuk platform ini belum
-# tercatat di sana, `vite build` gagal jauh di belakang dengan pesan yang tidak
-# menyebut penyebab sebenarnya. Lebih baik ketahuan di sini.
-if ! node -e "require('rollup')" >/dev/null 2>&1; then
-  BINER="@rollup/rollup-$(node -p 'process.platform')-$(node -p 'process.arch')-gnu"
-  echo
-  echo "Biner rollup untuk platform ini tidak ada: ${BINER}" >&2
-  echo "Tambahkan ke optionalDependencies di apps/web/package.json," >&2
-  echo "jalankan 'npm install' di komputer pengembangan, lalu commit lockfile-nya." >&2
+#
+# Lockfile dibuat di Windows dan npm hanya mencatat biner platform tempat
+# instalasi berjalan, sehingga `npm ci` di Linux melewatkannya. Akibatnya
+# berbeda-beda dan semuanya menyesatkan: rollup menggagalkan `vite build`
+# dengan pesan yang tidak menyebut penyebabnya, sedangkan sharp baru meledak
+# saat API start - build sukses, deploy tampak selesai, lalu situs 503.
+#
+# Karena itu SEMUA modul native diperiksa di sini, bukan hanya yang kebetulan
+# pernah bermasalah.
+biru "== Memeriksa modul native =="
+GAGAL=0
+for MODUL in rollup sharp argon2; do
+  if node -e "require('${MODUL}')" >/dev/null 2>&1; then
+    hijau "  ${MODUL} termuat."
+  else
+    echo "  ${MODUL} TIDAK bisa dimuat di platform ini." >&2
+    GAGAL=1
+  fi
+done
+
+if [[ $GAGAL -eq 1 ]]; then
+  echo >&2
+  echo "Biner platform untuk modul di atas tidak tercatat di package-lock.json." >&2
+  echo "Platform ini: $(node -p 'process.platform')-$(node -p 'process.arch')" >&2
+  echo >&2
+  echo "Perbaikan yang benar: tambahkan binernya ke optionalDependencies pada" >&2
+  echo "package.json workspace terkait, jalankan 'npm install' di komputer" >&2
+  echo "pengembangan, lalu commit package-lock.json yang baru." >&2
+  echo >&2
   echo "Penanganan sementara di server ini:" >&2
-  echo "  npm install --no-save ${BINER}" >&2
+  echo "  npm install --no-save @img/sharp-linux-x64 @rollup/rollup-linux-x64-gnu" >&2
   exit 1
 fi
 

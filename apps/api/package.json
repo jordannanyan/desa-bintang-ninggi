@@ -38,6 +38,13 @@
     "sharp": "^0.33.5",
     "zod": "^3.23.8"
   },
+  "_catatan_optionalDependencies": "Biner sharp untuk Linux dideklarasikan eksplisit agar tercatat di package-lock.json. Lockfile dibuat di Windows dan npm hanya mencatat biner platform tempat instalasi berjalan (npm/cli#4828), sehingga `npm ci` di VPS Linux tidak memasangnya dan `import sharp` menggagalkan API saat start. Dilewati sendiri pada instalasi di Windows karena paketnya menandai os=linux.",
+  "optionalDependencies": {
+    "@img/sharp-linux-x64": "^0.33.5",
+    "@img/sharp-libvips-linux-x64": "^1.0.4",
+    "@img/sharp-linux-arm64": "^0.33.5",
+    "@img/sharp-libvips-linux-arm64": "^1.0.4"
+  },
   "devDependencies": {
     "@types/compression": "^1.7.5",
     "@types/cookie-parser": "^1.4.7",
