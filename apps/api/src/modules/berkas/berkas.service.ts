@@ -1,7 +1,6 @@
 import { mkdir, unlink, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { dirname, extname, join } from 'node:path';
-import sharp from 'sharp';
 import { prisma } from '../../lib/prisma.js';
 import { env } from '../../config/env.js';
 import { AppError } from '../../middleware/error.js';
@@ -22,6 +21,28 @@ export const MIME_DIIZINKAN = [...GAMBAR, ...DOKUMEN];
 
 /** Lebar maksimum gambar setelah dikecilkan. */
 const LEBAR_MAKS = 1600;
+
+/**
+ * sharp dimuat saat dibutuhkan, bukan saat modul ini di-import.
+ *
+ * sharp adalah modul native, dan binernya bergantung pada platform. Sebagai
+ * impor di kepala berkas, satu biner yang hilang membuat SELURUH API gagal
+ * start - seluruh situs desa mati hanya karena pustaka pengolah gambar tidak
+ * terpasang. Dimuat di sini, kegagalannya terbatas pada unggahan gambar saja;
+ * pelayanan surat, data penduduk, dan keuangan tetap berjalan.
+ */
+let sharpTermuat: typeof import('sharp') | null | undefined;
+
+async function ambilSharp() {
+  if (sharpTermuat !== undefined) return sharpTermuat;
+  try {
+    sharpTermuat = (await import('sharp')).default;
+  } catch (err) {
+    console.error('sharp tidak bisa dimuat, unggahan gambar dinonaktifkan:', err);
+    sharpTermuat = null;
+  }
+  return sharpTermuat;
+}
 
 export interface BerkasTersimpan {
   id: string;
@@ -53,10 +74,22 @@ export async function simpanBerkas(
   let ekstensi = extname(file.originalname).toLowerCase() || '.bin';
 
   if (GAMBAR.includes(file.mimetype)) {
-    // Foto dari ponsel biasanya 3–8 MB dan 4000px lebih. Dikecilkan supaya
+    const sharp = await ambilSharp();
+
+    // Gambar TIDAK disimpan apa adanya bila sharp tidak tersedia. Menyimpannya
+    // berarti metadata EXIF ikut tersimpan, dan pada foto ponsel metadata itu
+    // kerap memuat titik koordinat tempat foto diambil. Lebih baik menolak
+    // unggahan daripada diam-diam menyiarkan lokasi rumah pengunggahnya.
+    if (!sharp) {
+      throw new AppError(
+        503,
+        'PENGOLAH_GAMBAR_TIDAK_TERSEDIA',
+        'Unggahan gambar sedang tidak bisa dilayani. Hubungi pengelola situs.',
+      );
+    }
+
+    // Foto dari ponsel biasanya 3-8 MB dan 4000px lebih. Dikecilkan supaya
     // hemat ruang server dan cepat dibuka warga yang sinyalnya terbatas.
-    // Sekaligus membuang metadata EXIF, yang pada foto ponsel sering memuat
-    // titik koordinat rumah pengunggah.
     isi = await sharp(file.buffer)
       .rotate() // hormati orientasi EXIF sebelum metadata dibuang
       .resize({ width: LEBAR_MAKS, withoutEnlargement: true })

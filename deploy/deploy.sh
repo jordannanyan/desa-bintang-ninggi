@@ -65,27 +65,50 @@ npm ci
 # Karena itu SEMUA modul native diperiksa di sini, bukan hanya yang kebetulan
 # pernah bermasalah.
 biru "== Memeriksa modul native =="
-GAGAL=0
-for MODUL in rollup sharp argon2; do
+
+# `npm ci` menghapus node_modules lalu memasang ulang dari lockfile, jadi
+# perbaikan manual dengan `npm install --no-save` selalu terhapus pada deploy
+# berikutnya. Pemasangan biner harus terjadi DI SINI, setelah npm ci.
+PLATFORM=$(node -p 'process.platform')
+ARSITEKTUR=$(node -p 'process.arch')
+LIBC=gnu
+if [[ "$PLATFORM" == "linux" ]] && ldd --version 2>&1 | grep -qi musl; then
+  LIBC=musl
+fi
+
+# Nama biner sharp memakai "linuxmusl", rollup memakai "linux-...-musl".
+SUFIKS_SHARP=$([[ "$LIBC" == musl ]] && echo "linuxmusl" || echo "$PLATFORM")
+
+pasang_biner() {
+  local MODUL="$1" BINER="$2"
+  node -e "require('${MODUL}')" >/dev/null 2>&1 && return 0
+
+  kuning "  ${MODUL} tidak bisa dimuat - memasang ${BINER}"
+  npm install --no-save "$BINER" >/dev/null 2>&1 || true
+
   if node -e "require('${MODUL}')" >/dev/null 2>&1; then
-    hijau "  ${MODUL} termuat."
-  else
-    echo "  ${MODUL} TIDAK bisa dimuat di platform ini." >&2
-    GAGAL=1
+    hijau "  ${MODUL} termuat setelah biner dipasang."
+    return 0
   fi
+  return 1
+}
+
+GAGAL=()
+pasang_biner rollup "@rollup/rollup-${PLATFORM}-${ARSITEKTUR}-${LIBC}" \
+  || GAGAL+=("rollup")
+pasang_biner sharp "@img/sharp-${SUFIKS_SHARP}-${ARSITEKTUR}" \
+  || GAGAL+=("sharp")
+node -e "require('argon2')" >/dev/null 2>&1 || GAGAL+=("argon2")
+
+for M in rollup sharp argon2; do
+  [[ " ${GAGAL[*]-} " == *" ${M} "* ]] || hijau "  ${M} siap."
 done
 
-if [[ $GAGAL -eq 1 ]]; then
+if [[ ${#GAGAL[@]} -gt 0 ]]; then
   echo >&2
-  echo "Biner platform untuk modul di atas tidak tercatat di package-lock.json." >&2
-  echo "Platform ini: $(node -p 'process.platform')-$(node -p 'process.arch')" >&2
-  echo >&2
-  echo "Perbaikan yang benar: tambahkan binernya ke optionalDependencies pada" >&2
-  echo "package.json workspace terkait, jalankan 'npm install' di komputer" >&2
-  echo "pengembangan, lalu commit package-lock.json yang baru." >&2
-  echo >&2
-  echo "Penanganan sementara di server ini:" >&2
-  echo "  npm install --no-save @img/sharp-linux-x64 @rollup/rollup-linux-x64-gnu" >&2
+  echo "Modul native ini tetap tidak bisa dimuat: ${GAGAL[*]}" >&2
+  echo "Platform: ${PLATFORM}-${ARSITEKTUR} (${LIBC})" >&2
+  echo "Deploy dihentikan sebelum build agar tidak menghasilkan API yang mati." >&2
   exit 1
 fi
 
