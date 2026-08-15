@@ -24,6 +24,11 @@ export interface SectionItem {
   path?: string;
   /** Catatan teknis / keputusan yang masih menggantung. */
   note?: string;
+  /**
+   * Kelompok menu pada dashboard. Dua puluh tautan sejajar tidak bisa dipindai
+   * mata; dikelompokkan, perangkat desa langsung tahu di bagian mana mencarinya.
+   */
+  grup?: string;
 }
 
 export interface Section {
@@ -555,28 +560,34 @@ export const DASHBOARD_PERANGKAT = {
   phase: 1 as Phase,
   summary: 'Ruang kerja perangkat desa: kelola data, setujui surat, dan perbarui konten.',
   items: [
-    { label: 'Profil desa', path: '/profil-desa' },
-    { label: 'Manajemen penduduk', path: '/penduduk' },
-    { label: 'Manajemen surat', path: '/surat' },
-    { label: 'Persetujuan surat', path: '/surat/persetujuan' },
-    { label: 'Keuangan', path: '/keuangan' },
-    { label: 'Pengaduan', path: '/pengaduan' },
-    { label: 'Pembangunan', path: '/pembangunan' },
-    { label: 'Agenda', path: '/agenda' },
-    { label: 'Berita', path: '/berita' },
-    { label: 'Galeri', path: '/galeri' },
-    { label: 'Dokumen & PPID', path: '/dokumen' },
-    { label: 'Informasi sektoral', path: '/informasi' },
-    { label: 'Fasilitas desa', path: '/fasilitas' },
-    { label: 'Harga komoditas', path: '/harga' },
-    { label: 'Lowongan kerja', path: '/lowongan' },
-    { label: 'Bantuan sosial', path: '/bantuan' },
+    // Urutan menyusul beban kerja harian: yang menyangkut warga di atas,
+    // konten yang jarang disentuh di bawah.
+    { label: 'Manajemen penduduk', path: '/penduduk', grup: 'Warga & Layanan' },
+    // "Persetujuan surat" dilebur ke sini: keduanya membaca tabel yang sama,
+    // dan persetujuan kini dilakukan langsung dari baris pengajuannya.
+    { label: 'Manajemen surat', path: '/surat', grup: 'Warga & Layanan' },
+    { label: 'Pengaduan', path: '/pengaduan', grup: 'Warga & Layanan' },
+    { label: 'Tagihan & pajak', path: '/tagihan', grup: 'Warga & Layanan' },
+
+    { label: 'Keuangan', path: '/keuangan', grup: 'Keuangan & Pembangunan' },
+    { label: 'Pembangunan', path: '/pembangunan', grup: 'Keuangan & Pembangunan' },
+    { label: 'Inventaris aset', path: '/aset', grup: 'Keuangan & Pembangunan' },
+
+    { label: 'Berita', path: '/berita', grup: 'Konten & Informasi' },
+    { label: 'Agenda', path: '/agenda', grup: 'Konten & Informasi' },
+    { label: 'Galeri', path: '/galeri', grup: 'Konten & Informasi' },
     // "Arsip digital" dihapus: isinya sama persis dengan Dokumen & PPID, dan
     // dua pintu ke lemari yang sama hanya membuat berkas tercecer di keduanya.
-    { label: 'Tagihan & pajak', path: '/tagihan' },
-    { label: 'Absensi perangkat', path: '/absensi' },
-    { label: 'Inventaris aset', path: '/aset' },
-    { label: 'Statistik real-time', path: '/statistik' },
+    { label: 'Dokumen & PPID', path: '/dokumen', grup: 'Konten & Informasi' },
+    { label: 'Informasi sektoral', path: '/informasi', grup: 'Konten & Informasi' },
+    { label: 'Fasilitas desa', path: '/fasilitas', grup: 'Konten & Informasi' },
+    { label: 'Harga komoditas', path: '/harga', grup: 'Konten & Informasi' },
+    { label: 'Lowongan kerja', path: '/lowongan', grup: 'Konten & Informasi' },
+    { label: 'Bantuan sosial', path: '/bantuan', grup: 'Konten & Informasi' },
+
+    { label: 'Profil desa', path: '/profil-desa', grup: 'Tata Usaha' },
+    { label: 'Absensi perangkat', path: '/absensi', grup: 'Tata Usaha' },
+    { label: 'Statistik real-time', path: '/statistik', grup: 'Tata Usaha' },
   ] as SectionItem[],
 };
 
@@ -588,16 +599,19 @@ export const DASHBOARD_WARGA = {
   phase: 1 as Phase,
   summary: 'Ruang pribadi warga setelah login dengan NIK.',
   items: [
-    { label: 'Data pribadi', path: '/profil' },
-    { label: 'Riwayat surat', path: '/surat' },
-    { label: 'Status bantuan', path: '/bantuan' },
-    { label: 'Pajak desa', path: '/pajak' },
-    { label: 'Tagihan', path: '/tagihan' },
-    { label: 'Pengaduan', path: '/pengaduan' },
-    { label: 'Riwayat kegiatan', path: '/kegiatan' },
-    { label: 'Sertifikat pelatihan', path: '/sertifikat' },
-    { label: 'UMKM saya', path: '/umkm' },
-    { label: 'Pesanan saya', path: '/pesanan' },
+    { label: 'Riwayat surat', path: '/surat', grup: 'Layanan' },
+    { label: 'Pengaduan', path: '/pengaduan', grup: 'Layanan' },
+
+    { label: 'Status bantuan', path: '/bantuan', grup: 'Bantuan & Tagihan' },
+    { label: 'Pajak desa', path: '/pajak', grup: 'Bantuan & Tagihan' },
+    { label: 'Tagihan', path: '/tagihan', grup: 'Bantuan & Tagihan' },
+
+    { label: 'Data pribadi', path: '/profil', grup: 'Data Saya' },
+    { label: 'Riwayat kegiatan', path: '/kegiatan', grup: 'Data Saya' },
+    { label: 'Sertifikat pelatihan', path: '/sertifikat', grup: 'Data Saya' },
+
+    { label: 'UMKM saya', path: '/umkm', grup: 'UMKM' },
+    { label: 'Pesanan saya', path: '/pesanan', grup: 'UMKM' },
   ] as SectionItem[],
 };
 

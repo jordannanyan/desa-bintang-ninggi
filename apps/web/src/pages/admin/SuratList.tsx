@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { LABEL_STATUS, STATUS_PENGAJUAN, type StatusPengajuan } from '@desa/shared';
-import { api } from '../../lib/api';
+import { api, pesanError } from '../../lib/api';
 
 interface BarisPengajuan {
   id: string;
@@ -24,8 +24,12 @@ const WARNA: Record<StatusPengajuan, string> = {
 };
 
 export function SuratList() {
+  const queryClient = useQueryClient();
   const [status, setStatus] = useState<StatusPengajuan | ''>('DIPROSES');
   const [page, setPage] = useState(1);
+  const [galat, setGalat] = useState<string | null>(null);
+  const [menolak, setMenolak] = useState<BarisPengajuan | null>(null);
+  const [alasan, setAlasan] = useState('');
 
   const { data, isLoading } = useQuery({
     queryKey: ['pengajuan-surat', status, page],
@@ -43,6 +47,22 @@ export function SuratList() {
   const berapaHari = (iso: string) =>
     Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
 
+  // Persetujuan dilakukan di daftar ini, bukan di halaman terpisah: dua menu
+  // yang membaca tabel yang sama hanya membuat perangkat desa menebak-nebak
+  // yang mana yang sedang dilihatnya.
+  const tinjau = useMutation({
+    mutationFn: (v: { id: string; status: 'DISETUJUI' | 'DITOLAK'; catatan?: string }) =>
+      api.patch(`/layanan/surat/${v.id}/tinjau`, { status: v.status, catatan: v.catatan }),
+    onSuccess: async () => {
+      setGalat(null);
+      setMenolak(null);
+      setAlasan('');
+      await queryClient.invalidateQueries({ queryKey: ['pengajuan-surat'] });
+      await queryClient.invalidateQueries({ queryKey: ['ringkasan-admin'] });
+    },
+    onError: (e) => setGalat(pesanError(e, 'Peninjauan gagal disimpan.')),
+  });
+
   return (
     <div>
       <div className="mb-5">
@@ -51,6 +71,12 @@ export function SuratList() {
           {data ? `${data.meta.total} pengajuan` : 'Memuat…'}
         </p>
       </div>
+
+      {galat && (
+        <div className="mb-4 rounded-lg border-l-4 border-red-500 bg-red-50 px-3 py-2 text-sm text-red-800">
+          {galat}
+        </div>
+      )}
 
       <div className="mb-4 flex flex-wrap gap-2">
         {(['', ...STATUS_PENGAJUAN] as const).map((s) => (
@@ -131,13 +157,38 @@ export function SuratList() {
                       {LABEL_STATUS[p.status]}
                     </span>
                   </td>
-                  <td className="px-4 py-2.5 text-right">
-                    <Link
-                      to={`/admin/surat/${p.id}`}
-                      className="text-xs font-medium text-desa-700 hover:underline"
-                    >
-                      Tinjau
-                    </Link>
+                  <td className="px-4 py-2.5">
+                    <div className="flex items-center justify-end gap-3 whitespace-nowrap">
+                      <Link
+                        to={`/admin/surat/${p.id}`}
+                        className="text-xs font-medium text-desa-700 hover:underline"
+                      >
+                        {p.status === 'DIPROSES' ? 'Tinjau berkas' : 'Lihat'}
+                      </Link>
+                      {p.status === 'DIPROSES' && (
+                        <>
+                          <button
+                            type="button"
+                            disabled={tinjau.isPending}
+                            onClick={() => tinjau.mutate({ id: p.id, status: 'DISETUJUI' })}
+                            className="rounded-md border border-desa-300 px-2 py-1 text-xs font-medium text-desa-700 hover:bg-desa-50 disabled:opacity-50"
+                          >
+                            Setujui
+                          </button>
+                          <button
+                            type="button"
+                            disabled={tinjau.isPending}
+                            onClick={() => {
+                              setMenolak(p);
+                              setAlasan('');
+                            }}
+                            className="rounded-md border border-red-200 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                          >
+                            Tolak
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
@@ -168,6 +219,48 @@ export function SuratList() {
             >
               Berikutnya
             </button>
+          </div>
+        </div>
+      )}
+
+      {menolak && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
+            <h2 className="mb-1 font-semibold text-slate-900">Tolak pengajuan</h2>
+            <p className="mb-3 text-sm text-slate-500">
+              {menolak.jenis} — {menolak.pemohon}
+            </p>
+            {/* Alasan wajib: warga membaca teks ini di halaman lacak, dan tanpa
+                alasan ia tidak tahu apa yang harus diperbaiki. */}
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Alasan penolakan
+            </label>
+            <textarea
+              rows={3}
+              value={alasan}
+              onChange={(e) => setAlasan(e.target.value)}
+              placeholder="Contoh: Fotokopi KTP belum terbaca, mohon unggah ulang."
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-desa-500 focus:outline-none focus:ring-1 focus:ring-desa-500"
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setMenolak(null)}
+                className="tombol-sekunder text-sm"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={alasan.trim().length === 0 || tinjau.isPending}
+                onClick={() =>
+                  tinjau.mutate({ id: menolak.id, status: 'DITOLAK', catatan: alasan.trim() })
+                }
+                className="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {tinjau.isPending ? 'Menyimpan…' : 'Tolak pengajuan'}
+              </button>
+            </div>
           </div>
         </div>
       )}

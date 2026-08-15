@@ -421,23 +421,123 @@ sayaRoutes.get(
   }),
 );
 
+/**
+ * Ringkasan untuk beranda dashboard warga.
+ *
+ * Yang ditampilkan hanya milik warga itu sendiri — tidak ada satu pun angka
+ * sedesa di sini, karena beranda warga menjawab "apa yang sedang berjalan
+ * untuk saya", bukan "seperti apa desa ini".
+ */
+sayaRoutes.get(
+  '/ringkasan',
+  wajibLogin,
+  async_(async (req, res) => {
+    const userId = req.user!.sub;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { penduduk: { select: { nama: true } } },
+    });
+    const pendudukId = user?.pendudukId ?? null;
+
+    // Surat dan pesanan bergantung pada akun; tagihan, bantuan, dan sertifikat
+    // bergantung pada data penduduk yang tertaut. Akun tanpa tautan tetap
+    // dilayani dengan nol, bukan galat — ia masih bisa mengajukan surat.
+    const [
+      suratDiproses,
+      suratSiapDiambil,
+      pengaduanAktif,
+      pesananAktif,
+      tagihanBelum,
+      tagihanNilai,
+      bantuanAktif,
+      sertifikat,
+    ] = await Promise.all([
+      prisma.pengajuanSurat.count({ where: { pemohonId: userId, status: 'DIPROSES' } }),
+      prisma.pengajuanSurat.count({ where: { pemohonId: userId, status: 'SIAP_DIAMBIL' } }),
+      prisma.pengaduan.count({
+        where: { pelaporId: userId, status: { in: ['BARU', 'DIVERIFIKASI', 'DITANGANI'] } },
+      }),
+      prisma.pesanan.count({
+        where: {
+          pembeliId: userId,
+          status: { in: ['MENUNGGU_PEMBAYARAN', 'MENUNGGU_VERIFIKASI', 'DIPROSES_PENJUAL'] },
+        },
+      }),
+      pendudukId
+        ? prisma.tagihan.count({ where: { pendudukId, status: 'BELUM_BAYAR' } })
+        : Promise.resolve(0),
+      pendudukId
+        ? prisma.tagihan.aggregate({
+            where: { pendudukId, status: 'BELUM_BAYAR' },
+            _sum: { jumlah: true },
+          })
+        : Promise.resolve(null),
+      pendudukId
+        ? prisma.penerimaBantuan.count({ where: { pendudukId } })
+        : Promise.resolve(0),
+      pendudukId ? prisma.sertifikat.count({ where: { pendudukId } }) : Promise.resolve(0),
+    ]);
+
+    res.json({
+      ok: true,
+      data: {
+        tertaut: Boolean(pendudukId),
+        nama: user?.penduduk?.nama ?? null,
+        suratDiproses,
+        suratSiapDiambil,
+        pengaduanAktif,
+        pesananAktif,
+        tagihanBelum,
+        tagihanNilai: angka(tagihanNilai?._sum.jumlah),
+        bantuanAktif,
+        sertifikat,
+      },
+    });
+  }),
+);
+
 // ─────────────────────────────────────────────
 // STATISTIK DASHBOARD
 // ─────────────────────────────────────────────
 
 export const statistikRoutes = Router();
 
-/** Angka-angka yang paling sering ditanyakan perangkat desa, dalam satu panggilan. */
+/** Nama bulan pendek untuk sumbu grafik — dibentuk sekali, dipakai berulang. */
+const NAMA_BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+/** Enam bulan terakhir termasuk bulan berjalan, urut dari yang paling lama. */
+function enamBulanTerakhir() {
+  const kini = new Date();
+  return Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(kini.getFullYear(), kini.getMonth() - (5 - i), 1);
+    return {
+      awal: d,
+      akhir: new Date(d.getFullYear(), d.getMonth() + 1, 1),
+      label: NAMA_BULAN[d.getMonth()],
+    };
+  });
+}
+
+/**
+ * Angka-angka yang paling sering ditanyakan perangkat desa, dalam satu panggilan.
+ *
+ * Digabung karena beranda dashboard membukanya setiap kali perangkat desa
+ * masuk: satu permintaan jauh lebih baik daripada belasan permintaan paralel.
+ */
 statistikRoutes.get(
   '/',
   ...perangkat,
   async_(async (_req, res) => {
-    const awalTahun = new Date(new Date().getFullYear(), 0, 1);
+    const tahunIni = new Date().getFullYear();
+    const awalTahun = new Date(tahunIni, 0, 1);
     const aktif = { tanggalMeninggal: null, tanggalPindah: null };
+    const bulan = enamBulanTerakhir();
 
     const [
       penduduk,
       kk,
+      lakiLaki,
+      perempuan,
       suratMenunggu,
       suratTerbitTahunIni,
       pengaduanBaru,
@@ -447,9 +547,18 @@ statistikRoutes.get(
       tagihanBelum,
       berita,
       dokumen,
+      suratPerStatus,
+      pengaduanPerKategori,
+      asetPerKondisi,
+      anggaran,
+      masukPerBulan,
+      terbitPerBulan,
+      aduanPerBulan,
     ] = await Promise.all([
       prisma.penduduk.count({ where: aktif }),
       prisma.kartuKeluarga.count(),
+      prisma.penduduk.count({ where: { ...aktif, jenisKelamin: 'LAKI_LAKI' } }),
+      prisma.penduduk.count({ where: { ...aktif, jenisKelamin: 'PEREMPUAN' } }),
       prisma.pengajuanSurat.count({ where: { status: 'DIPROSES' } }),
       prisma.pengajuanSurat.count({
         where: { status: 'SIAP_DIAMBIL', ditandatanganiPada: { gte: awalTahun } },
@@ -461,13 +570,50 @@ statistikRoutes.get(
       prisma.tagihan.count({ where: { status: 'BELUM_BAYAR' } }),
       prisma.berita.count({ where: { terbit: true } }),
       prisma.dokumen.count(),
+      prisma.pengajuanSurat.groupBy({ by: ['status'], _count: true }),
+      prisma.pengaduan.groupBy({ by: ['kategori'], _count: true }),
+      prisma.aset.groupBy({ by: ['kondisi'], _count: true }),
+      prisma.anggaran.findFirst({
+        where: { tahun: tahunIni },
+        orderBy: { versi: 'desc' },
+        include: { item: { select: { jenis: true, pagu: true, realisasi: true } } },
+      }),
+      // Deret waktu dihitung sebagai enam hitungan terpisah, bukan satu query
+      // GROUP BY tanggal: fungsi pemotong bulan berbeda antar versi
+      // MySQL/MariaDB, dan enam COUNT bersamaan tetap murah pada skala desa.
+      Promise.all(
+        bulan.map((b) =>
+          prisma.pengajuanSurat.count({ where: { dibuatPada: { gte: b.awal, lt: b.akhir } } }),
+        ),
+      ),
+      Promise.all(
+        bulan.map((b) =>
+          prisma.pengajuanSurat.count({
+            where: { ditandatanganiPada: { gte: b.awal, lt: b.akhir } },
+          }),
+        ),
+      ),
+      Promise.all(
+        bulan.map((b) =>
+          prisma.pengaduan.count({ where: { dibuatPada: { gte: b.awal, lt: b.akhir } } }),
+        ),
+      ),
     ]);
+
+    const belanja = (anggaran?.item ?? []).filter((i) => i.jenis === 'BELANJA');
+    const pendapatan = (anggaran?.item ?? []).filter((i) => i.jenis === 'PENDAPATAN');
+    const jumlahkan = (
+      daftar: { pagu: unknown; realisasi: unknown }[],
+      kolom: 'pagu' | 'realisasi',
+    ) => daftar.reduce((t, i) => t + angka(i[kolom]), 0);
 
     res.json({
       ok: true,
       data: {
         penduduk,
         kk,
+        lakiLaki,
+        perempuan,
         suratMenunggu,
         suratTerbitTahunIni,
         pengaduanBaru,
@@ -477,6 +623,31 @@ statistikRoutes.get(
         tagihanBelum,
         berita,
         dokumen,
+
+        suratPerStatus: suratPerStatus.map((s) => ({ label: s.status, jumlah: s._count })),
+        pengaduanPerKategori: pengaduanPerKategori.map((p) => ({
+          label: p.kategori,
+          jumlah: p._count,
+        })),
+        asetPerKondisi: asetPerKondisi.map((a) => ({ label: a.kondisi, jumlah: a._count })),
+
+        keuangan: anggaran
+          ? {
+              tahun: anggaran.tahun,
+              versi: anggaran.versi,
+              pendapatanPagu: jumlahkan(pendapatan, 'pagu'),
+              pendapatanRealisasi: jumlahkan(pendapatan, 'realisasi'),
+              belanjaPagu: jumlahkan(belanja, 'pagu'),
+              belanjaRealisasi: jumlahkan(belanja, 'realisasi'),
+            }
+          : null,
+
+        tren: bulan.map((b, i) => ({
+          label: b.label,
+          suratMasuk: masukPerBulan[i],
+          suratTerbit: terbitPerBulan[i],
+          pengaduan: aduanPerBulan[i],
+        })),
       },
     });
   }),

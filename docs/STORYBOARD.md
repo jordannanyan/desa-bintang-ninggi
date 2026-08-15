@@ -1,9 +1,9 @@
 <!-- DIBANGKITKAN OTOMATIS oleh scripts/generate-storyboard.ts — jangan diedit manual. -->
 # Storyboard — Website Desa Bintang Ninggi I
 
-Dibangkitkan dari `packages/shared/src/constants/sections.ts` pada 14 Agustus 2026.
+Dibangkitkan dari `packages/shared/src/constants/sections.ts` pada 15 Agustus 2026.
 
-- **23 section publik**, 79 layar termasuk turunan dan dashboard
+- **23 section publik**, 87 layar termasuk turunan dan dashboard
 - Alur pengguna langkah demi langkah: lihat [alur-pengguna.md](./alur-pengguna.md)
 
 ## 1. Peta Situs
@@ -637,15 +637,22 @@ graph LR
 |---|---|
 | Manajemen penduduk | `/admin/penduduk` |
 | Manajemen surat | `/admin/surat` |
-| Persetujuan surat | `/admin/surat/persetujuan` |
+| Pengaduan | `/admin/pengaduan` |
+| Tagihan & pajak | `/admin/tagihan` |
 | Keuangan | `/admin/keuangan` |
 | Pembangunan | `/admin/pembangunan` |
-| Agenda | `/admin/agenda` |
-| Berita | `/admin/berita` |
-| Galeri | `/admin/galeri` |
-| Arsip digital | `/admin/arsip` |
-| Absensi perangkat | `/admin/absensi` |
 | Inventaris aset | `/admin/aset` |
+| Berita | `/admin/berita` |
+| Agenda | `/admin/agenda` |
+| Galeri | `/admin/galeri` |
+| Dokumen & PPID | `/admin/dokumen` |
+| Informasi sektoral | `/admin/informasi` |
+| Fasilitas desa | `/admin/fasilitas` |
+| Harga komoditas | `/admin/harga` |
+| Lowongan kerja | `/admin/lowongan` |
+| Bantuan sosial | `/admin/bantuan` |
+| Profil desa | `/admin/profil-desa` |
+| Absensi perangkat | `/admin/absensi` |
 | Statistik real-time | `/admin/statistik` |
 
 ### Dashboard Warga
@@ -658,15 +665,16 @@ graph LR
 
 | Menu | Rute |
 |---|---|
-| Data pribadi | `/warga/profil` |
 | Riwayat surat | `/warga/surat` |
+| Pengaduan | `/warga/pengaduan` |
 | Status bantuan | `/warga/bantuan` |
 | Pajak desa | `/warga/pajak` |
 | Tagihan | `/warga/tagihan` |
-| Pengaduan | `/warga/pengaduan` |
+| Data pribadi | `/warga/profil` |
 | Riwayat kegiatan | `/warga/kegiatan` |
 | Sertifikat pelatihan | `/warga/sertifikat` |
 | UMKM saya | `/warga/umkm` |
+| Pesanan saya | `/warga/pesanan` |
 
 
 ## 5. Section yang Dibatalkan

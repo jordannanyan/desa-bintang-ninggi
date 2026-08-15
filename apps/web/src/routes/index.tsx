@@ -63,8 +63,9 @@ import { AkunWarga } from '../pages/admin/AkunWarga';
 import { BeritaKelola } from '../pages/admin/BeritaKelola';
 import { AgendaKelola } from '../pages/admin/AgendaKelola';
 import { ProfilDesaForm } from '../pages/admin/ProfilDesaForm';
-import { PersetujuanSurat } from '../pages/admin/PersetujuanSurat';
 import { TagihanKelola } from '../pages/admin/TagihanKelola';
+import { BerandaAdmin } from '../pages/admin/BerandaAdmin';
+import { BerandaWarga } from '../pages/warga/BerandaWarga';
 import { AbsensiKelola, AsetKelola, StatistikDashboard } from '../pages/admin/TataUsaha';
 import {
   DataPribadi,
@@ -157,7 +158,6 @@ const HALAMAN_ASLI: Record<string, JSX.Element> = {
   '/admin/surat': <SuratList />,
   '/admin/berita': <BeritaKelola />,
   '/admin/agenda': <AgendaKelola />,
-  '/admin/surat/persetujuan': <PersetujuanSurat />,
   '/admin/tagihan': <TagihanKelola />,
   '/admin/absensi': <AbsensiKelola />,
   '/admin/aset': <AsetKelola />,
@@ -247,18 +247,9 @@ const ruteDashboard = (
 });
 
 const ruteIsiDashboard = (dash: typeof DASHBOARD_PERANGKAT | typeof DASHBOARD_WARGA) => [
-    {
-      index: true,
-      element: (
-        <HalamanPlaceholder
-          judul={dash.title}
-          ringkasan={dash.summary}
-          fase={dash.phase}
-          items={dash.items}
-          route={dash.route}
-        />
-      ),
-    },
+    // Beranda dashboard menjawab "apa yang harus saya kerjakan sekarang",
+    // bukan sekadar mendaftar ulang menu yang sudah ada di samping.
+    { index: true, element: dash.route === '/admin' ? <BerandaAdmin /> : <BerandaWarga /> },
     ...dash.items
       .filter((item) => item.path)
       .map((item) => ({

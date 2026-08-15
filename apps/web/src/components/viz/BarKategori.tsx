@@ -88,7 +88,10 @@ export function BarKategori({
           return (
             <li
               key={d.label}
-              className="grid grid-cols-[11rem_1fr] items-center gap-3"
+              // Kolom label menyempit di layar ponsel: pada lebar 420px,
+              // 11rem menyisakan ruang batang yang terlalu pendek untuk
+              // dibandingkan.
+              className="grid grid-cols-[6.5rem_1fr] items-center gap-3 sm:grid-cols-[11rem_1fr]"
               onMouseEnter={() => setDisorot(d.label)}
               onMouseLeave={() => setDisorot(null)}
               onFocus={() => setDisorot(d.label)}
@@ -122,7 +125,7 @@ export function BarKategori({
                 </div>
 
                 <span
-                  className="w-20 shrink-0 text-right text-xs tabular-nums"
+                  className="w-12 shrink-0 text-right text-xs tabular-nums sm:w-20"
                   style={{ color: TINTA.utama }}
                 >
                   {formatAngka(d.jumlah)}

@@ -1,8 +1,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { formatRupiah, formatRupiahRingkas } from '@desa/shared';
+import { LABEL_STATUS, formatRupiah, formatRupiahRingkas } from '@desa/shared';
 import { api, pesanError } from '../../lib/api';
+import { BarKategori } from '../../components/viz/BarKategori';
+import { BatangProporsi } from '../../components/viz/StatTile';
+import { TrenGaris } from '../../components/viz/TrenGaris';
+import { manusiawi, useRingkasan } from './BerandaAdmin';
 
 const gayaInput =
   'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-desa-500 focus:outline-none focus:ring-1 focus:ring-desa-500';
@@ -17,78 +21,144 @@ function Galat({ pesan }: { pesan: string | null }) {
 }
 
 // ─────────────────────────────────────────────
-// STATISTIK REAL-TIME
+// STATISTIK MENDALAM
 // ─────────────────────────────────────────────
 
+/**
+ * Rincian yang tidak muat di beranda dashboard. Beranda menjawab "apa yang
+ * harus saya kerjakan hari ini"; halaman ini menjawab "seperti apa desa ini
+ * kalau dilihat angkanya".
+ */
 export function StatistikDashboard() {
-  const { data, isLoading } = useQuery({
-    queryKey: ['statistik-dashboard'],
-    // Angka ini berubah sepanjang hari, jadi disegarkan berkala tanpa
-    // perangkat desa perlu memuat ulang halaman.
-    refetchInterval: 60_000,
-    queryFn: async () => (await api.get('/statistik')).data.data,
+  const { data, isLoading } = useRingkasan();
+  const [sebagaiTabel, setSebagaiTabel] = useState(false);
+
+  const { data: penduduk } = useQuery({
+    queryKey: ['statistik-kependudukan'],
+    queryFn: async () => (await api.get('/kependudukan/statistik')).data.data,
   });
 
-  if (isLoading) return <p className="text-sm text-slate-500">Memuat…</p>;
+  if (isLoading || !data) return <p className="text-sm text-slate-500">Memuat…</p>;
 
-  const perluTindakan = [
-    { label: 'Surat menunggu persetujuan', nilai: data.suratMenunggu, ke: '/admin/surat/persetujuan' },
-    { label: 'Pengaduan belum ditangani', nilai: data.pengaduanBaru, ke: '/admin/pengaduan' },
-    { label: 'Tagihan belum dibayar', nilai: data.tagihanBelum, ke: '/admin/tagihan' },
-  ];
-
-  const ringkasan = [
-    { label: 'Penduduk aktif', nilai: data.penduduk },
-    { label: 'Kartu Keluarga', nilai: data.kk },
-    { label: 'Surat terbit tahun ini', nilai: data.suratTerbitTahunIni },
-    { label: 'Pengaduan selesai', nilai: data.pengaduanSelesai },
-    { label: 'UMKM aktif', nilai: data.umkm },
-    { label: 'Proyek berjalan', nilai: data.proyekBerjalan },
-    { label: 'Berita terbit', nilai: data.berita },
-    { label: 'Dokumen tersimpan', nilai: data.dokumen },
-  ];
+  const totalAset = data.asetPerKondisi.reduce((t, a) => t + a.jumlah, 0);
 
   return (
-    <div className="max-w-4xl">
-      <h1 className="mb-1 text-xl font-bold text-slate-900">Statistik Real-time</h1>
-      <p className="mb-5 text-sm text-slate-500">
-        Diperbarui otomatis setiap menit.
-      </p>
-
-      {/* Yang menuntut tindakan ditaruh paling atas dan bisa langsung diklik:
-          angka yang hanya dipandangi tidak mengubah apa pun. */}
-      <h2 className="mb-3 text-sm font-semibold text-slate-900">Perlu Ditindaklanjuti</h2>
-      <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        {perluTindakan.map((s) => (
-          <Link
-            key={s.label}
-            to={s.ke}
-            className={`kartu transition hover:border-desa-300 hover:shadow-md ${
-              s.nilai > 0 ? 'border-l-4 border-l-amber-400' : ''
-            }`}
-          >
-            <p className="text-xs text-slate-500">{s.label}</p>
-            <p
-              className={`mt-1 text-3xl font-bold ${
-                s.nilai > 0 ? 'text-amber-700' : 'text-slate-300'
-              }`}
-            >
-              {s.nilai}
-            </p>
-          </Link>
-        ))}
+    <div className="max-w-5xl space-y-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900">Statistik Desa</h1>
+          <p className="text-sm text-slate-500">Diperbarui otomatis setiap menit.</p>
+        </div>
+        {/* Tampilan tabel wajib ada: grafik saja tidak bisa dibaca pembaca
+            layar maupun disalin ke laporan. */}
+        <button
+          type="button"
+          onClick={() => setSebagaiTabel((t) => !t)}
+          className="tombol-sekunder text-xs"
+        >
+          {sebagaiTabel ? 'Tampilkan grafik' : 'Tampilkan tabel'}
+        </button>
       </div>
 
-      <h2 className="mb-3 text-sm font-semibold text-slate-900">Ringkasan Desa</h2>
-      <div className="grid gap-4 sm:grid-cols-4">
-        {ringkasan.map((s) => (
-          <div key={s.label} className="kartu">
-            <p className="text-xs text-slate-500">{s.label}</p>
-            <p className="mt-1 text-2xl font-semibold text-slate-900">
-              {s.nilai.toLocaleString('id-ID')}
-            </p>
-          </div>
-        ))}
+      <TrenGaris
+        judul="Tren Enam Bulan Terakhir"
+        keterangan="Arahkan kursor pada satu bulan untuk melihat seluruh angkanya."
+        sumbu={data.tren.map((t) => t.label)}
+        seri={[
+          { label: 'Surat masuk', nilai: data.tren.map((t) => t.suratMasuk) },
+          { label: 'Surat terbit', nilai: data.tren.map((t) => t.suratTerbit) },
+          { label: 'Pengaduan', nilai: data.tren.map((t) => t.pengaduan) },
+        ]}
+      />
+
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        <BarKategori
+          judul="Pengajuan Surat per Status"
+          data={data.suratPerStatus.map((s) => ({
+            label: LABEL_STATUS[s.label as keyof typeof LABEL_STATUS] ?? manusiawi(s.label),
+            jumlah: s.jumlah,
+          }))}
+          satuan="pengajuan"
+          sebagaiTabel={sebagaiTabel}
+        />
+        <BarKategori
+          judul="Pengaduan per Kategori"
+          data={[...data.pengaduanPerKategori]
+            .sort((a, b) => b.jumlah - a.jumlah)
+            .map((p) => ({ label: manusiawi(p.label), jumlah: p.jumlah }))}
+          satuan="laporan"
+          sebagaiTabel={sebagaiTabel}
+        />
+        <BatangProporsi
+          judul="Komposisi Penduduk"
+          bagian={[
+            { label: 'Laki-laki', jumlah: data.lakiLaki },
+            { label: 'Perempuan', jumlah: data.perempuan },
+          ]}
+        />
+        <BarKategori
+          judul="Kondisi Aset Desa"
+          keterangan={`${totalAset} jenis barang tercatat.`}
+          data={data.asetPerKondisi.map((a) => ({
+            label: manusiawi(a.label),
+            jumlah: a.jumlah,
+          }))}
+          satuan="jenis barang"
+          sebagaiTabel={sebagaiTabel}
+        />
+      </div>
+
+      {penduduk?.perKelompokUsia?.length ? (
+        <div className="grid items-start gap-4 lg:grid-cols-2">
+          <BarKategori
+            judul="Penduduk per Kelompok Usia"
+            data={penduduk.perKelompokUsia}
+            sebagaiTabel={sebagaiTabel}
+          />
+          {/* Pendidikan dan pekerjaan sudah tersimpan sebagai teks yang bisa
+              dibaca ("SLTA/Sederajat"), bukan kode enum — jangan diubah lagi,
+              karena `manusiawi` akan merusak singkatannya. */}
+          <BarKategori
+            judul="Penduduk per Pendidikan"
+            data={penduduk.perPendidikan ?? []}
+            sebagaiTabel={sebagaiTabel}
+          />
+          <BarKategori
+            judul="Pekerjaan Terbanyak"
+            keterangan={`${(penduduk.perPekerjaan ?? []).length} pekerjaan dengan penyandang terbanyak.`}
+            data={penduduk.perPekerjaan ?? []}
+            sebagian
+            sebagaiTabel={sebagaiTabel}
+          />
+          <BarKategori
+            judul="Penduduk per RT"
+            data={penduduk.perRt ?? []}
+            sebagaiTabel={sebagaiTabel}
+          />
+        </div>
+      ) : null}
+
+      <div className="kartu">
+        <h3 className="mb-3 text-sm font-semibold text-slate-900">Angka Lain</h3>
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
+          {[
+            ['Penduduk aktif', data.penduduk],
+            ['Kartu Keluarga', data.kk],
+            ['Surat terbit tahun ini', data.suratTerbitTahunIni],
+            ['Pengaduan selesai', data.pengaduanSelesai],
+            ['UMKM aktif', data.umkm],
+            ['Proyek berjalan', data.proyekBerjalan],
+            ['Berita terbit', data.berita],
+            ['Dokumen tersimpan', data.dokumen],
+          ].map(([label, nilai]) => (
+            <div key={label as string}>
+              <dt className="text-xs text-slate-500">{label}</dt>
+              <dd className="text-xl font-semibold tabular-nums text-slate-900">
+                {(nilai as number).toLocaleString('id-ID')}
+              </dd>
+            </div>
+          ))}
+        </dl>
       </div>
     </div>
   );
