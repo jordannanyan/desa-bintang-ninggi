@@ -121,6 +121,32 @@ npm run build --workspace=@desa/shared
 npm run db:generate --workspace=@desa/api
 
 # ---- 4. Database --------------------------------------------
+# Berkas migrasi dibangkitkan lewat perintah yang keluarannya bisa tercampur
+# pesan lain - catatan pembaruan Prisma, peringatan shell - dan pesan itu ikut
+# tertulis ke dalam berkas SQL. Akibatnya baru terasa di sini: migrasi berhenti
+# di tengah jalan setelah sebagian tabel terlanjur dibuat, dan basis data
+# tertinggal dalam keadaan setengah jadi.
+biru "== Memeriksa berkas migrasi =="
+KOTOR=0
+for M in apps/api/prisma/migrations/*/migration.sql; do
+  [[ -e "$M" ]] || continue
+  if grep -qE 'node\.exe|CategoryInfo|FullyQualifiedErrorId|npm error|Update available|[┌└│├]' "$M"; then
+    echo "  Berisi teks yang bukan SQL: $M" >&2
+    grep -nE 'node\.exe|CategoryInfo|FullyQualifiedErrorId|npm error|Update available|[┌└│├]' "$M" \
+      | head -3 | sed 's/^/    /' >&2
+    KOTOR=1
+  fi
+done
+
+if [[ $KOTOR -eq 1 ]]; then
+  echo >&2
+  echo "Deploy dihentikan sebelum menyentuh basis data." >&2
+  echo "Bersihkan berkas migrasi di komputer pengembangan lalu commit ulang." >&2
+  exit 1
+fi
+hijau "Berkas migrasi bersih."
+echo
+
 biru "== Menerapkan migrasi database =="
 # `migrate deploy` hanya menerapkan migrasi yang sudah ada - tidak pernah
 # membuat migrasi baru dan tidak pernah menghapus data. Aman di produksi.

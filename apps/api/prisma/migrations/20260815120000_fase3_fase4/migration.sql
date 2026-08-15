@@ -80,19 +80,3 @@ ALTER TABLE `informasi_sektor` ADD CONSTRAINT `informasi_sektor_lampiranId_fkey`
 -- AddForeignKey
 ALTER TABLE `fasilitas` ADD CONSTRAINT `fasilitas_fotoId_fkey` FOREIGN KEY (`fotoId`) REFERENCES `berkas`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
-node.exe : ┌─────────────────────────────────────────────────────────┐
-At line:1 char:1
-+ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
-+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    + CategoryInfo          : NotSpecified: (┌──────────────...──────────────┐:String) [], RemoteException
-    + FullyQualifiedErrorId : NativeCommandError
- 
-│  Update available 5.22.0 -> 7.9.1                       │
-│                                                         │
-│  This is a major update - please follow the guide at    │
-│  https://pris.ly/d/major-version-upgrade                │
-│                                                         │
-│  Run the following to update                            │
-│    npm i --save-dev prisma@latest                       │
-│    npm i @prisma/client@latest                          │
-└─────────────────────────────────────────────────────────┘
