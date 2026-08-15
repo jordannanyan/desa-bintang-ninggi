@@ -103,15 +103,38 @@ if [[ $LEWATI_RESTART -eq 1 ]]; then
 fi
 
 biru "== Menyalakan ulang layanan =="
-if systemctl list-unit-files | grep -q '^desa-api.service'; then
-  $SUDO systemctl restart desa-api
-  sleep 2
-  systemctl is-active --quiet desa-api \
-    && hijau "API berjalan." \
-    || { echo "API gagal jalan. Lihat: sudo journalctl -u desa-api -n 50" >&2; exit 1; }
+
+# Apache menyajikan apps/web/dist langsung dari disk, jadi frontend baru tayang
+# begitu build selesai. API TIDAK: prosesnya memuat dist/server.js sekali saat
+# start, dan hanya berganti setelah systemctl restart. Bila langkah ini terlewat,
+# hasilnya frontend versi baru berbicara dengan API versi lama - keadaan yang
+# tampak berjalan normal padahal separuh fiturnya menjawab 501.
+#
+# Versi sebelumnya memakai `systemctl list-unit-files | grep '^desa-api.service'`
+# dan MELEWATI restart tanpa pesan apa pun bila polanya tidak cocok, sementara
+# skrip tetap mencetak "Deploy selesai". Kegagalan diam-diam itu persis yang
+# membuat keadaan di atas terjadi.
+if ! systemctl cat desa-api >/dev/null 2>&1; then
+  echo >&2
+  echo "Layanan desa-api tidak terpasang di systemd." >&2
+  echo "Frontend sudah diperbarui, tetapi API MASIH MENJALANKAN KODE LAMA." >&2
+  echo "Pasang layanannya lebih dulu: sudo bash deploy/setup-vps.sh" >&2
+  exit 1
 fi
+
+$SUDO systemctl restart desa-api
+sleep 3
+
+if ! systemctl is-active --quiet desa-api; then
+  echo "API gagal jalan. Lihat: sudo journalctl -u desa-api -n 50" >&2
+  exit 1
+fi
+hijau "API dinyalakan ulang: $(systemctl show desa-api -p ActiveEnterTimestamp --value)"
 
 $SUDO systemctl reload apache2 2>/dev/null || true
 
 echo
 hijau "Deploy selesai - $(git rev-parse --short HEAD 2>/dev/null || echo 'tanpa git')"
+echo
+echo "Pastikan API benar-benar memakai kode baru:"
+echo "  curl -s http://localhost:$(grep -E '^PORT=' apps/api/.env | cut -d= -f2)/api | head -c 200"
