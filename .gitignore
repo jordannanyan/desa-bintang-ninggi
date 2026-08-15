@@ -12,3 +12,11 @@ coverage/
 apps/api/prisma/dev.db*
 .password-admin-awal.txt
 cek*.mjs
+# Perkakas pemeriksa halaman kosong bukan berkas buangan — ia dipakai setiap
+# kali PDF panduan dibuat ulang, jadi dikecualikan dari pola di atas.
+!scripts/cek-halaman-kosong.mjs
+
+# panduan.html menyematkan 37 tangkapan layar sebagai data URI (12 MB). Berkas
+# ini sepenuhnya bisa dibangkitkan ulang dari docs/screenshots/panduan/ yang
+# memang ikut tersimpan, jadi tidak perlu ikut ke git.
+docs/visual/panduan.html

@@ -18,6 +18,12 @@
     "storyboard": "tsx scripts/generate-storyboard.ts",
     "storyboard:render": "node scripts/render-storyboard.mjs",
     "storyboard:screenshot": "node scripts/screenshot-web.mjs",
+    "panduan:data": "node scripts/data-contoh.mjs",
+    "panduan:screenshot": "node scripts/screenshot-panduan.mjs",
+    "panduan:generate": "node scripts/generate-panduan.mjs",
+    "panduan:render": "node scripts/render-panduan.mjs",
+    "panduan:cek": "node scripts/cek-halaman-kosong.mjs docs/Panduan-Penggunaan-Desa-Bintang-Ninggi-I.pdf",
+    "panduan": "npm run panduan:generate && npm run panduan:render && npm run panduan:cek",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {
