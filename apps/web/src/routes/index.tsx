@@ -51,6 +51,14 @@ import { TokoSaya } from '../pages/warga/TokoSaya';
 import { KeuanganKelola } from '../pages/admin/KeuanganKelola';
 import { PembangunanKelola } from '../pages/admin/PembangunanKelola';
 import { DokumenKelola } from '../pages/admin/DokumenKelola';
+import {
+  BantuanKelola,
+  FasilitasKelola,
+  GaleriKelola,
+  HargaKelola,
+  InformasiKelola,
+  LowonganKelola,
+} from '../pages/admin/SektorKelola';
 import { AkunWarga } from '../pages/admin/AkunWarga';
 import { BeritaKelola } from '../pages/admin/BeritaKelola';
 import { AgendaKelola } from '../pages/admin/AgendaKelola';
@@ -75,6 +83,12 @@ const HALAMAN_ASLI: Record<string, JSX.Element> = {
   '/admin/keuangan': <KeuanganKelola />,
   '/admin/pembangunan': <PembangunanKelola />,
   '/admin/dokumen': <DokumenKelola />,
+  '/admin/informasi': <InformasiKelola />,
+  '/admin/fasilitas': <FasilitasKelola />,
+  '/admin/harga': <HargaKelola />,
+  '/admin/lowongan': <LowonganKelola />,
+  '/admin/bantuan': <BantuanKelola />,
+  '/admin/galeri': <GaleriKelola />,
   '/pengumuman': <Pengumuman />,
   '/agenda': <Agenda />,
   '/admin/penduduk': <PendudukList />,
