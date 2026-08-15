@@ -19,6 +19,8 @@ async function main() {
       kecamatan: 'Teweh Selatan',
       kabupaten: 'Barito Utara',
       provinsi: 'Kalimantan Tengah',
+      // Kode pos menurut Wikipedia dan kodepos.id. Tebakan awal 73881 keliru.
+      kodePos: '73814',
       // Sengaja dibiarkan kosong, bukan diisi teks "TODO". Nilai bawaan yang
       // berisi teks akan langsung tampil di halaman depan yang dibuka warga;
       // dibiarkan null, tampilannya justru mengajak perangkat desa mengisinya.

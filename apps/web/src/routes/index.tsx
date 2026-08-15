@@ -20,6 +20,8 @@ import { SuratSaya } from '../pages/warga/SuratSaya';
 import { ProfilDesa } from '../pages/ProfilDesa';
 import { BeritaList, BeritaDetail } from '../pages/Berita';
 import { Agenda, Pengumuman } from '../pages/PengumumanAgenda';
+import { Aktivasi } from '../pages/Aktivasi';
+import { AkunWarga } from '../pages/admin/AkunWarga';
 import { BeritaKelola } from '../pages/admin/BeritaKelola';
 import { AgendaKelola } from '../pages/admin/AgendaKelola';
 import { ProfilDesaForm } from '../pages/admin/ProfilDesaForm';
@@ -134,6 +136,7 @@ const ruteIsiDashboard = (dash: typeof DASHBOARD_PERANGKAT | typeof DASHBOARD_WA
           { path: 'penduduk/impor', element: <PendudukImpor /> },
           { path: 'penduduk/baru', element: <PendudukForm /> },
           { path: 'penduduk/:id', element: <PendudukForm /> },
+          { path: 'akun/:id', element: <AkunWarga /> },
           { path: 'surat/:id', element: <SuratDetail /> },
           { path: 'profil-desa', element: <ProfilDesaForm /> },
         ]
@@ -147,18 +150,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Beranda /> },
       { path: 'masuk', element: <Masuk /> },
-      {
-        path: 'aktivasi',
-        element: (
-          <HalamanPlaceholder
-            judul="Aktivasi Akun"
-            ringkasan="Warga menukar kode aktivasi dari perangkat desa menjadi PIN miliknya sendiri."
-            fase={1}
-            items={[]}
-            route="/aktivasi"
-          />
-        ),
-      },
+      { path: 'aktivasi', element: <Aktivasi /> },
       { path: 'masuk-perangkat', element: <MasukPerangkat /> },
 
       // Verifikasi surat sengaja di akar, bukan di bawah /layanan: alamatnya

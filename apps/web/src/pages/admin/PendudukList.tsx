@@ -119,7 +119,7 @@ export function PendudukList() {
       )}
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-        <table className="w-full min-w-[52rem] text-sm">
+        <table className="w-full min-w-[58rem] text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs text-slate-500">
             <tr>
               <th className="px-4 py-2.5 font-medium">Nama</th>
@@ -129,12 +129,13 @@ export function PendudukList() {
               <th className="px-4 py-2.5 font-medium">Hubungan</th>
               <th className="px-4 py-2.5 font-medium">RT/RW</th>
               <th className="px-4 py-2.5 font-medium">Status</th>
+              <th className="px-4 py-2.5" />
             </tr>
           </thead>
           <tbody>
             {isLoading && (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-slate-400">
+                <td colSpan={8} className="px-4 py-10 text-center text-slate-400">
                   Memuat…
                 </td>
               </tr>
@@ -142,7 +143,7 @@ export function PendudukList() {
 
             {data?.data.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-slate-400">
+                <td colSpan={8} className="px-4 py-10 text-center text-slate-400">
                   {kataKunci ? 'Tidak ada yang cocok.' : 'Belum ada data penduduk.'}
                 </td>
               </tr>
@@ -176,6 +177,18 @@ export function PendudukList() {
                   >
                     {p.status.toLowerCase()}
                   </span>
+                </td>
+                <td className="px-4 py-2.5 text-right">
+                  {/* Hanya untuk penduduk aktif: menerbitkan kode aktivasi bagi
+                      orang yang sudah meninggal atau pindah tidak masuk akal. */}
+                  {p.status === 'AKTIF' && (
+                    <Link
+                      to={`/admin/akun/${p.id}`}
+                      className="whitespace-nowrap text-xs font-medium text-desa-700 hover:underline"
+                    >
+                      Buat akun
+                    </Link>
+                  )}
                 </td>
               </tr>
             ))}

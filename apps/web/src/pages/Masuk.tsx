@@ -17,6 +17,8 @@ export function Masuk() {
   const navigate = useNavigate();
   const lokasi = useLocation();
   const [galat, setGalat] = useState<string | null>(null);
+  // Dikirim halaman aktivasi setelah akun berhasil dibuat.
+  const kabar = (lokasi.state as { kabar?: string } | null)?.kabar;
 
   const {
     register,
@@ -45,6 +47,12 @@ export function Masuk() {
         <p className="mb-6 text-sm text-slate-500">
           Gunakan NIK dan PIN yang Anda buat saat aktivasi akun.
         </p>
+
+        {kabar && (
+          <div className="mb-4 rounded-lg border-l-4 border-desa-500 bg-desa-50 px-3 py-2 text-sm text-desa-900">
+            {kabar}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="kartu space-y-4" noValidate>
           {galat && (
