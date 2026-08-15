@@ -18,9 +18,7 @@
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.53.2",
     "@hookform/resolvers": "^3.9.1",
-    "react-leaflet": "^4.2.1",
     "react-router-dom": "^6.28.0",
-    "recharts": "^2.13.3",
     "zod": "^3.23.8"
   },
   "_catatan_optionalDependencies": "Biner rollup untuk Linux dideklarasikan eksplisit agar tercatat di package-lock.json. Lockfile dibuat di Windows, dan npm hanya mencatat biner platform tempat instalasi berjalan (npm/cli#4828) — akibatnya `npm ci` di VPS Linux gagal dengan 'Cannot find module @rollup/rollup-linux-x64-gnu'. Deklarasi ini dilewati otomatis saat instalasi di Windows karena paketnya menandai os=linux.",

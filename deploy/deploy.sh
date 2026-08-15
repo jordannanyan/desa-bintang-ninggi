@@ -27,8 +27,9 @@ for arg in "$@"; do
   esac
 done
 
-biru()  { printf '\033[1;34m%s\033[0m\n' "$*"; }
-hijau() { printf '\033[1;32m%s\033[0m\n' "$*"; }
+biru()   { printf '\033[1;34m%s\033[0m\n' "$*"; }
+hijau()  { printf '\033[1;32m%s\033[0m\n' "$*"; }
+kuning() { printf '\033[1;33m%s\033[0m\n' "$*"; }
 
 # Skrip ini dipanggil dua cara: langsung oleh pengguna biasa (butuh sudo untuk
 # systemctl), dan dari setup-vps.sh yang sudah berjalan sebagai root. Tanpa
