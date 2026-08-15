@@ -13,6 +13,23 @@ export const profilDesaSchema = z.object({
   /** Daftar poin misi. */
   misi: z.array(z.string().min(3)).optional(),
   sambutanKades: z.string().optional(),
+  prestasi: z
+    .array(
+      z.object({
+        judul: z.string().min(3).max(200),
+        tahun: z.coerce.number().int().min(1900).max(2100),
+        keterangan: z.string().max(500).optional(),
+      }),
+    )
+    .optional(),
+  potensi: z
+    .array(
+      z.object({
+        judul: z.string().min(3).max(200),
+        keterangan: z.string().max(500).optional(),
+      }),
+    )
+    .optional(),
   videoProfilUrl: z.string().max(255).optional(),
   jamPelayanan: z.record(z.string(), z.string()).optional(),
   nomorDarurat: z.record(z.string(), z.string()).optional(),

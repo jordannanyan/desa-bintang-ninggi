@@ -199,6 +199,9 @@ model Penduduk {
   user       User?
   perangkat  Perangkat?
   penerima   PenerimaBantuan[]
+  tagihan    Tagihan[]
+  sertifikat Sertifikat[]
+  kegiatan   KegiatanWarga[]
 
   dibuatPada     DateTime @default(now())
   diperbaruiPada DateTime @updatedAt
@@ -225,6 +228,10 @@ model ProfilDesa {
   visi          String?  @db.Text
   misi          Json?
   sambutanKades String?  @db.Text
+  /// Daftar prestasi desa: [{ judul, tahun, keterangan? }]
+  prestasi      Json?
+  /// Daftar potensi desa: [{ judul, keterangan? }]
+  potensi       Json?
   videoProfilUrl String? @db.VarChar(255)
   jamPelayanan  Json?
   nomorDarurat  Json?
@@ -252,6 +259,7 @@ model Perangkat {
   uraianTugas String?  @db.Text
   urutan     Int       @default(0)
   fotoUrl    String?   @db.VarChar(255)
+  absensi    Absensi[]
   mulaiMenjabat DateTime? @db.Date
   akhirMenjabat DateTime? @db.Date
   aktif      Boolean   @default(true)
@@ -350,6 +358,8 @@ model Berkas {
   gambarInformasi   InformasiSektor[] @relation("GambarInformasi")
   lampiranInformasi InformasiSektor[] @relation("LampiranInformasi")
   fotoFasilitas     Fasilitas[]       @relation("FotoFasilitas")
+  fotoAset          Aset[]            @relation("FotoAset")
+  berkasSertifikat  Sertifikat[]      @relation("BerkasSertifikat")
 
   dibuatPada DateTime @default(now())
 
@@ -414,6 +424,7 @@ model Agenda {
   selesai   DateTime?
   lokasi    String?        @db.VarChar(200)
   penyelenggara String?    @db.VarChar(120)
+  peserta       KegiatanWarga[]
 
   dibuatPada DateTime @default(now())
 
@@ -1074,6 +1085,144 @@ enum JenisLowongan {
   MAGANG
   PELATIHAN
   REKRUTMEN
+}
+
+// ─────────────────────────────────────────────────────────────
+// TATA USAHA DESA
+//
+// Menopang menu dashboard yang selama ini masih kerangka: absensi perangkat,
+// inventaris aset, tagihan warga, sertifikat pelatihan, dan riwayat kegiatan.
+// ─────────────────────────────────────────────────────────────
+
+enum StatusKehadiran {
+  HADIR
+  IZIN
+  SAKIT
+  DINAS_LUAR
+  ALPA
+}
+
+model Absensi {
+  id          String          @id @default(uuid())
+  perangkatId String
+  perangkat   Perangkat       @relation(fields: [perangkatId], references: [id], onDelete: Cascade)
+  tanggal     DateTime        @db.Date
+  status      StatusKehadiran @default(HADIR)
+  jamMasuk    String?         @db.VarChar(5)
+  jamPulang   String?         @db.VarChar(5)
+  catatan     String?         @db.VarChar(255)
+
+  dibuatPada DateTime @default(now())
+
+  /// Satu catatan per orang per hari. Pencatatan ulang memperbaiki, bukan
+  /// menambah baris kembar yang membuat rekap kehadiran tidak bisa dipercaya.
+  @@unique([perangkatId, tanggal])
+  @@index([tanggal])
+  @@map("absensi")
+}
+
+enum KondisiAset {
+  BAIK
+  RUSAK_RINGAN
+  RUSAK_BERAT
+}
+
+model Aset {
+  id             String      @id @default(uuid())
+  nama           String      @db.VarChar(150)
+  kategori       String      @db.VarChar(80)
+  kodeInventaris String?     @unique @db.VarChar(60)
+  tahunPerolehan Int
+  nilai          Decimal     @db.Decimal(15, 2)
+  jumlah         Int         @default(1)
+  satuan         String      @db.VarChar(20) @default("unit")
+  kondisi        KondisiAset @default(BAIK)
+  lokasi         String?     @db.VarChar(150)
+  sumberDana     String?     @db.VarChar(80)
+  keterangan     String?     @db.Text
+
+  fotoId String?
+  foto   Berkas? @relation("FotoAset", fields: [fotoId], references: [id], onDelete: SetNull)
+
+  dibuatPada     DateTime @default(now())
+  diperbaruiPada DateTime @updatedAt
+
+  @@index([kategori, kondisi])
+  @@map("aset")
+}
+
+enum JenisTagihan {
+  PBB
+  IURAN_DESA
+  SEWA_ASET
+  LAINNYA
+}
+
+enum StatusTagihan {
+  BELUM_BAYAR
+  LUNAS
+  DIBATALKAN
+}
+
+/// Tagihan warga. Menopang menu "Pajak desa" dan "Tagihan" sekaligus —
+/// keduanya perkara yang sama, hanya berbeda jenisnya.
+model Tagihan {
+  id         String        @id @default(uuid())
+  pendudukId String
+  penduduk   Penduduk      @relation(fields: [pendudukId], references: [id], onDelete: Cascade)
+  jenis      JenisTagihan
+  judul      String        @db.VarChar(200)
+  tahun      Int
+  periode    String?       @db.VarChar(20)
+  jumlah     Decimal       @db.Decimal(15, 2)
+  jatuhTempo DateTime?     @db.Date
+  status     StatusTagihan @default(BELUM_BAYAR)
+  dibayarPada DateTime?
+  catatan    String?       @db.VarChar(255)
+
+  dibuatPada DateTime @default(now())
+
+  @@index([pendudukId, status])
+  @@index([tahun, jenis])
+  @@map("tagihan")
+}
+
+model Sertifikat {
+  id              String    @id @default(uuid())
+  pendudukId      String
+  penduduk        Penduduk  @relation(fields: [pendudukId], references: [id], onDelete: Cascade)
+  namaPelatihan   String    @db.VarChar(200)
+  penyelenggara   String    @db.VarChar(150)
+  tanggalMulai    DateTime  @db.Date
+  tanggalSelesai  DateTime? @db.Date
+  nomorSertifikat String?   @db.VarChar(80)
+
+  berkasId String?
+  berkas   Berkas? @relation("BerkasSertifikat", fields: [berkasId], references: [id], onDelete: SetNull)
+
+  dibuatPada DateTime @default(now())
+
+  @@index([pendudukId])
+  @@map("sertifikat")
+}
+
+/// Riwayat keikutsertaan warga pada kegiatan desa. Boleh menunjuk ke agenda
+/// yang tercatat, boleh juga berdiri sendiri untuk kegiatan lampau.
+model KegiatanWarga {
+  id         String   @id @default(uuid())
+  pendudukId String
+  penduduk   Penduduk @relation(fields: [pendudukId], references: [id], onDelete: Cascade)
+  agendaId   String?
+  agenda     Agenda?  @relation(fields: [agendaId], references: [id], onDelete: SetNull)
+  judul      String   @db.VarChar(200)
+  tanggal    DateTime @db.Date
+  peran      String?  @db.VarChar(80)
+  keterangan String?  @db.VarChar(255)
+
+  dibuatPada DateTime @default(now())
+
+  @@index([pendudukId, tanggal])
+  @@map("kegiatan_warga")
 }
 
 model Lowongan {

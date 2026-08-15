@@ -23,6 +23,15 @@ import {
   lowonganRoutes,
   petaRoutes,
 } from '../modules/sektor/sektor.routes.js';
+import {
+  absensiRoutes,
+  asetRoutes,
+  kegiatanRoutes,
+  sayaRoutes,
+  sertifikatRoutes,
+  statistikRoutes,
+  tagihanRoutes,
+} from '../modules/tatausaha/tatausaha.routes.js';
 import { loginOpsional } from '../middleware/auth.js';
 import { daftarStub, type PetaEndpoint } from './stub.js';
 
@@ -55,6 +64,13 @@ apiRoutes.use('/harga-komoditas', hargaRoutes);
 apiRoutes.use('/lowongan', lowonganRoutes);
 apiRoutes.use('/bantuan-sosial', bantuanRoutes);
 apiRoutes.use('/peta', petaRoutes);
+apiRoutes.use('/absensi', absensiRoutes);
+apiRoutes.use('/aset', asetRoutes);
+apiRoutes.use('/tagihan', tagihanRoutes);
+apiRoutes.use('/sertifikat', sertifikatRoutes);
+apiRoutes.use('/kegiatan', kegiatanRoutes);
+apiRoutes.use('/saya', sayaRoutes);
+apiRoutes.use('/statistik', statistikRoutes);
 
 const petaSiap: PetaEndpoint[] = [
   { section: 'Autentikasi', no: 0, fase: 1, basis: '/api/auth', status: 'siap' },

@@ -571,7 +571,9 @@ export const DASHBOARD_PERANGKAT = {
     { label: 'Harga komoditas', path: '/harga' },
     { label: 'Lowongan kerja', path: '/lowongan' },
     { label: 'Bantuan sosial', path: '/bantuan' },
-    { label: 'Arsip digital', path: '/arsip' },
+    // "Arsip digital" dihapus: isinya sama persis dengan Dokumen & PPID, dan
+    // dua pintu ke lemari yang sama hanya membuat berkas tercecer di keduanya.
+    { label: 'Tagihan & pajak', path: '/tagihan' },
     { label: 'Absensi perangkat', path: '/absensi' },
     { label: 'Inventaris aset', path: '/aset' },
     { label: 'Statistik real-time', path: '/statistik' },

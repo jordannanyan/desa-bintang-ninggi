@@ -63,12 +63,74 @@ import { AkunWarga } from '../pages/admin/AkunWarga';
 import { BeritaKelola } from '../pages/admin/BeritaKelola';
 import { AgendaKelola } from '../pages/admin/AgendaKelola';
 import { ProfilDesaForm } from '../pages/admin/ProfilDesaForm';
+import { PersetujuanSurat } from '../pages/admin/PersetujuanSurat';
+import { TagihanKelola } from '../pages/admin/TagihanKelola';
+import { AbsensiKelola, AsetKelola, StatistikDashboard } from '../pages/admin/TataUsaha';
+import {
+  DataPribadi,
+  PajakDesa,
+  PengaduanSaya,
+  RiwayatKegiatan,
+  SertifikatSaya,
+  TagihanSaya,
+} from '../pages/warga/DataSaya';
+import { BAGIAN_PROFIL } from '../pages/ProfilDesa';
+import {
+  AlihVerifikasi,
+  KeHalaman,
+  KeranjangInfo,
+  PermohonanInformasi,
+} from '../pages/Alias';
 
 /**
  * Halaman yang sudah digarap, menggantikan kerangka yang dibangkitkan registry.
  * Kunci = rute penuh. Menambah halaman asli cukup didaftarkan di sini.
  */
+/**
+ * Sub-item Profil Desa adalah blok-blok pada satu halaman panjang, bukan
+ * halaman terpisah: memecahnya jadi tiga belas halaman membuat pembaca harus
+ * bolak-balik untuk hal yang seharusnya bisa digulir sekali.
+ */
+const RUTE_PROFIL = Object.fromEntries(
+  BAGIAN_PROFIL.map((b) => [`/profil/${b.id}`, <KeHalaman tujuan={`/profil#${b.id}`} />]),
+);
+
+/** Sub-item Pemerintahan Desa membuka daftar dokumen dengan jenis tersaring. */
+const RUTE_PEMERINTAHAN = Object.fromEntries(
+  (
+    [
+      ['perdes', 'PERDES'],
+      ['perkades', 'PERKADES'],
+      ['sk-kades', 'SK_KADES'],
+      ['rpjmdes', 'RPJMDES'],
+      ['rkpdes', 'RKPDES'],
+      ['apbdes', 'APBDES'],
+      ['realisasi-apbdes', 'REALISASI_APBDES'],
+    ] as const
+  ).map(([jalur, jenis]) => [
+    `/pemerintahan/${jalur}`,
+    <PemerintahanDesa saringAwal={jenis} />,
+  ]),
+);
+
 const HALAMAN_ASLI: Record<string, JSX.Element> = {
+  ...RUTE_PROFIL,
+  ...RUTE_PEMERINTAHAN,
+
+  // Perangkat desa dan uraian tugasnya tinggal di Profil Desa; dua salinan
+  // daftar yang sama hanya menjamin salah satunya lekas basi.
+  '/pemerintahan/perangkat': <KeHalaman tujuan="/profil#perangkat" />,
+  '/pemerintahan/tugas': <KeHalaman tujuan="/profil#perangkat" />,
+
+  '/layanan/status': <KeHalaman tujuan="/warga/surat" />,
+  '/layanan/verifikasi/:kode': <AlihVerifikasi />,
+  '/pengaduan/buat': <BuatPengaduan />,
+  '/pengaduan/status': <KeHalaman tujuan="/pengaduan/lacak" />,
+  '/umkm/keranjang': <KeranjangInfo />,
+  '/umkm/pesanan': <KeHalaman tujuan="/warga/pesanan" />,
+  '/bantuan-sosial/cek': <KeHalaman tujuan="/warga/bantuan" />,
+  '/ppid/permohonan': <PermohonanInformasi />,
+
   '/kependudukan': <Kependudukan />,
   '/layanan': <Layanan />,
   '/profil': <ProfilDesa />,
@@ -95,7 +157,20 @@ const HALAMAN_ASLI: Record<string, JSX.Element> = {
   '/admin/surat': <SuratList />,
   '/admin/berita': <BeritaKelola />,
   '/admin/agenda': <AgendaKelola />,
+  '/admin/surat/persetujuan': <PersetujuanSurat />,
+  '/admin/tagihan': <TagihanKelola />,
+  '/admin/absensi': <AbsensiKelola />,
+  '/admin/aset': <AsetKelola />,
+  '/admin/statistik': <StatistikDashboard />,
   '/warga/surat': <SuratSaya />,
+  '/warga/profil': <DataPribadi />,
+  '/warga/pajak': <PajakDesa />,
+  '/warga/tagihan': <TagihanSaya />,
+  '/warga/pengaduan': <PengaduanSaya />,
+  '/warga/sertifikat': <SertifikatSaya />,
+  '/warga/kegiatan': <RiwayatKegiatan />,
+  '/warga/pesanan': <PesananSaya />,
+  '/admin/profil-desa': <ProfilDesaForm />,
   '/umkm': <Umkm />,
   '/warga/umkm': <TokoSaya />,
   '/bumdes': <BumDes />,
@@ -199,13 +274,10 @@ const ruteIsiDashboard = (dash: typeof DASHBOARD_PERANGKAT | typeof DASHBOARD_WA
         ),
       })),
 
-    // Sub-rute yang tidak berasal dari menu registry.
-    ...(dash.route === '/warga'
-      ? [
-          { path: 'pesanan', element: <PesananSaya /> },
-          { path: 'pesanan/:id', element: <PesananDetail /> },
-        ]
-      : []),
+    // Sub-rute yang tidak berasal dari menu registry. Yang alamatnya sama
+    // persis dengan item menu tidak boleh ditaruh di sini — ia akan bentrok
+    // dengan rute bangkitan di atas; daftarkan di HALAMAN_ASLI saja.
+    ...(dash.route === '/warga' ? [{ path: 'pesanan/:id', element: <PesananDetail /> }] : []),
     ...(dash.route === '/admin'
       ? [
           { path: 'penduduk/impor', element: <PendudukImpor /> },
@@ -214,7 +286,6 @@ const ruteIsiDashboard = (dash: typeof DASHBOARD_PERANGKAT | typeof DASHBOARD_WA
           { path: 'akun/:id', element: <AkunWarga /> },
           { path: 'pengaduan/:id', element: <PengaduanDetail /> },
           { path: 'surat/:id', element: <SuratDetail /> },
-          { path: 'profil-desa', element: <ProfilDesaForm /> },
         ]
       : []),
 ];
@@ -237,7 +308,6 @@ export const router = createBrowserRouter([
 
       { path: 'layanan/ajukan/:kode', element: <AjukanSurat /> },
       { path: 'berita/:slug', element: <BeritaDetail /> },
-      { path: 'pengaduan/buat', element: <BuatPengaduan /> },
       { path: 'pengaduan/lacak', element: <LacakPengaduan /> },
       { path: 'pengaduan/lacak/:kode', element: <LacakPengaduan /> },
       { path: 'pembangunan/:id', element: <ProyekDetail /> },

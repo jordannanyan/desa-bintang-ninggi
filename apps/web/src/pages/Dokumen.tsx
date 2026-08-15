@@ -38,13 +38,16 @@ function DaftarDokumen({
   keterangan,
   jenis,
   tampilkanKeteranganJenis = false,
+  saringAwal,
 }: {
   judul: string;
   keterangan: string;
   jenis: JenisDokumen[];
   tampilkanKeteranganJenis?: boolean;
+  /** Jenis yang langsung tersaring saat halaman dibuka lewat sub-rute. */
+  saringAwal?: JenisDokumen;
 }) {
-  const [saring, setSaring] = useState<JenisDokumen | ''>('');
+  const [saring, setSaring] = useState<JenisDokumen | ''>(saringAwal ?? '');
   const [cari, setCari] = useState('');
 
   const { data, isLoading } = useQuery({
@@ -156,12 +159,13 @@ function DaftarDokumen({
   );
 }
 
-export function PemerintahanDesa() {
+export function PemerintahanDesa({ saringAwal }: { saringAwal?: JenisDokumen } = {}) {
   return (
     <DaftarDokumen
       judul="Pemerintahan Desa"
       keterangan="Peraturan Desa, SK Kepala Desa, dokumen perencanaan, dan laporan APBDes."
       jenis={DOKUMEN_PEMERINTAHAN}
+      saringAwal={saringAwal}
     />
   );
 }

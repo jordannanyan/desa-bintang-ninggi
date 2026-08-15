@@ -18,6 +18,10 @@ interface FormProfil {
   /** Satu poin misi per baris — jauh lebih ringan dipakai daripada daftar dinamis. */
   misiTeks: string;
   sambutanKades: string;
+  /** Satu prestasi per baris: `Judul | Tahun | Keterangan`. */
+  prestasiTeks: string;
+  /** Satu potensi per baris: `Judul | Keterangan`. */
+  potensiTeks: string;
   videoProfilUrl: string;
   waDesa: string;
   email: string;
@@ -39,6 +43,8 @@ const KOSONG: FormProfil = {
   visi: '',
   misiTeks: '',
   sambutanKades: '',
+  prestasiTeks: '',
+  potensiTeks: '',
   videoProfilUrl: '',
   waDesa: '',
   email: '',
@@ -91,6 +97,20 @@ export function ProfilDesaForm() {
       visi: data.visi ?? '',
       misiTeks: Array.isArray(data.misi) ? data.misi.join('\n') : '',
       sambutanKades: data.sambutanKades ?? '',
+      prestasiTeks: Array.isArray(data.prestasi)
+        ? data.prestasi
+            .map((p: { judul: string; tahun: number; keterangan?: string }) =>
+              [p.judul, p.tahun, p.keterangan].filter(Boolean).join(' | '),
+            )
+            .join('\n')
+        : '',
+      potensiTeks: Array.isArray(data.potensi)
+        ? data.potensi
+            .map((p: { judul: string; keterangan?: string }) =>
+              [p.judul, p.keterangan].filter(Boolean).join(' | '),
+            )
+            .join('\n')
+        : '',
       videoProfilUrl: data.videoProfilUrl ?? '',
       waDesa: data.waDesa ?? '',
       email: data.email ?? '',
@@ -103,7 +123,7 @@ export function ProfilDesaForm() {
 
   const simpan = useMutation({
     mutationFn: () => {
-      const { misiTeks, luasWilayahKm, ...sisa } = form;
+      const { misiTeks, prestasiTeks, potensiTeks, luasWilayahKm, ...sisa } = form;
       const muatan: Record<string, unknown> = { ...sisa };
 
       // Kolom opsional yang dikosongkan dikirim undefined, bukan string kosong,
@@ -117,6 +137,27 @@ export function ProfilDesaForm() {
         .map((b) => b.trim())
         .filter(Boolean);
       if (luasWilayahKm) muatan.luasWilayahKm = Number(luasWilayahKm);
+
+      const baris = (teks: string) =>
+        teks
+          .split('\n')
+          .map((b) => b.trim())
+          .filter(Boolean)
+          .map((b) => b.split('|').map((k) => k.trim()));
+
+      // Baris tanpa tahun yang sah dilewati, bukan dikirim dengan NaN yang
+      // pasti ditolak validasi tanpa perangkat desa tahu baris mana penyebabnya.
+      muatan.prestasi = baris(prestasiTeks)
+        .filter(([judul, tahun]) => judul && /^\d{4}$/.test(tahun ?? ''))
+        .map(([judul, tahun, keterangan]) => ({
+          judul,
+          tahun: Number(tahun),
+          keterangan: keterangan || undefined,
+        }));
+
+      muatan.potensi = baris(potensiTeks)
+        .filter(([judul]) => judul)
+        .map(([judul, keterangan]) => ({ judul, keterangan: keterangan || undefined }));
 
       return api.put('/profil', muatan);
     },
@@ -215,6 +256,27 @@ export function ProfilDesaForm() {
               rows={6}
               value={form.sambutanKades}
               onChange={ubah('sambutanKades')}
+              className={gayaInput}
+            />
+          </Bidang>
+          <Bidang
+            label="Prestasi desa"
+            petunjuk="Satu prestasi per baris: Judul | Tahun | Keterangan. Baris tanpa tahun empat digit diabaikan."
+          >
+            <textarea
+              rows={5}
+              value={form.prestasiTeks}
+              onChange={ubah('prestasiTeks')}
+              placeholder="Juara I Lomba Desa Tingkat Kabupaten | 2024 | Kategori tata kelola"
+              className={gayaInput}
+            />
+          </Bidang>
+          <Bidang label="Potensi desa" petunjuk="Satu potensi per baris: Judul | Keterangan.">
+            <textarea
+              rows={5}
+              value={form.potensiTeks}
+              onChange={ubah('potensiTeks')}
+              placeholder="Perkebunan karet | Luas 120 ha, dikelola 80 kepala keluarga"
               className={gayaInput}
             />
           </Bidang>
