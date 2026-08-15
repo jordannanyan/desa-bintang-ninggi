@@ -565,6 +565,7 @@ export const DASHBOARD_PERANGKAT = {
     { label: 'Agenda', path: '/agenda' },
     { label: 'Berita', path: '/berita' },
     { label: 'Galeri', path: '/galeri' },
+    { label: 'Dokumen & PPID', path: '/dokumen' },
     { label: 'Arsip digital', path: '/arsip' },
     { label: 'Absensi perangkat', path: '/absensi' },
     { label: 'Inventaris aset', path: '/aset' },

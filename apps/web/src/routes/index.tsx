@@ -25,6 +25,12 @@ import { Pengaduan } from '../pages/Pengaduan';
 import { BuatPengaduan } from '../pages/BuatPengaduan';
 import { LacakPengaduan } from '../pages/LacakPengaduan';
 import { PengaduanList, PengaduanDetail } from '../pages/admin/PengaduanKelola';
+import { Keuangan } from '../pages/Keuangan';
+import { Pembangunan, ProyekDetail } from '../pages/Pembangunan';
+import { PemerintahanDesa, Ppid, DownloadCenter } from '../pages/Dokumen';
+import { KeuanganKelola } from '../pages/admin/KeuanganKelola';
+import { PembangunanKelola } from '../pages/admin/PembangunanKelola';
+import { DokumenKelola } from '../pages/admin/DokumenKelola';
 import { AkunWarga } from '../pages/admin/AkunWarga';
 import { BeritaKelola } from '../pages/admin/BeritaKelola';
 import { AgendaKelola } from '../pages/admin/AgendaKelola';
@@ -40,7 +46,15 @@ const HALAMAN_ASLI: Record<string, JSX.Element> = {
   '/profil': <ProfilDesa />,
   '/berita': <BeritaList />,
   '/pengaduan': <Pengaduan />,
+  '/keuangan': <Keuangan />,
+  '/pembangunan': <Pembangunan />,
+  '/pemerintahan': <PemerintahanDesa />,
+  '/ppid': <Ppid />,
+  '/download': <DownloadCenter />,
   '/admin/pengaduan': <PengaduanList />,
+  '/admin/keuangan': <KeuanganKelola />,
+  '/admin/pembangunan': <PembangunanKelola />,
+  '/admin/dokumen': <DokumenKelola />,
   '/pengumuman': <Pengumuman />,
   '/agenda': <Agenda />,
   '/admin/penduduk': <PendudukList />,
@@ -171,6 +185,7 @@ export const router = createBrowserRouter([
       { path: 'pengaduan/buat', element: <BuatPengaduan /> },
       { path: 'pengaduan/lacak', element: <LacakPengaduan /> },
       { path: 'pengaduan/lacak/:kode', element: <LacakPengaduan /> },
+      { path: 'pembangunan/:id', element: <ProyekDetail /> },
       ...rutePublik,
       { path: '*', element: <Navigate to="/" replace /> },
     ],

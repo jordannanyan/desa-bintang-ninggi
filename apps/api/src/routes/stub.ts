@@ -2,7 +2,14 @@ import { Router } from 'express';
 import { DASHBOARD_PERANGKAT, DASHBOARD_WARGA, SECTIONS } from '@desa/shared';
 
 /** Modul yang endpoint-nya sudah ditulis tangan dan tidak perlu router stub. */
-const SUDAH_ADA = new Set(['layanan', 'kependudukan', 'profil', 'pengaduan']);
+const SUDAH_ADA = new Set([
+  'layanan',
+  'kependudukan',
+  'profil',
+  'pengaduan',
+  'keuangan',
+  'pembangunan',
+]);
 
 /**
  * Membuat router placeholder untuk tiap section yang belum digarap.
