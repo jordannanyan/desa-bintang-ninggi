@@ -319,7 +319,13 @@ export async function terbitkanSurat(req: Request, id: string) {
     agama: pdd.agama,
     pekerjaan: pdd.pekerjaan,
     pendidikan: pdd.pendidikan,
-    statusKawin: pdd.statusKawin.replace(/_/g, ' ').toLowerCase(),
+    // Huruf kapital di awal tiap kata. Bentuk "kawin" atau "cerai hidup"
+    // dengan huruf kecil terbaca janggal pada surat dinas.
+    statusKawin: pdd.statusKawin
+      .toLowerCase()
+      .split('_')
+      .map((k) => k.charAt(0).toUpperCase() + k.slice(1))
+      .join(' '),
     kewarganegaraan: pdd.kewarganegaraan,
     alamat: `${pdd.kartuKeluarga.alamat}, RT ${pdd.kartuKeluarga.rt.nomor}/RW ${pdd.kartuKeluarga.rt.rw.nomor}`,
     rt: pdd.kartuKeluarga.rt.nomor,
