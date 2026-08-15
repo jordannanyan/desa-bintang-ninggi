@@ -9,6 +9,7 @@ const SUDAH_ADA = new Set([
   'pengaduan',
   'keuangan',
   'pembangunan',
+  'umkm',
 ]);
 
 /**

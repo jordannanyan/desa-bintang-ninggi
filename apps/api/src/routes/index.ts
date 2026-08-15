@@ -13,6 +13,7 @@ import { pengaduanRoutes } from '../modules/pengaduan/pengaduan.routes.js';
 import { keuanganRoutes } from '../modules/keuangan/keuangan.routes.js';
 import { pembangunanRoutes } from '../modules/pembangunan/pembangunan.routes.js';
 import { dokumenRoutes } from '../modules/dokumen/dokumen.routes.js';
+import { umkmRoutes } from '../modules/umkm/umkm.routes.js';
 import { loginOpsional } from '../middleware/auth.js';
 import { daftarStub, type PetaEndpoint } from './stub.js';
 
@@ -37,6 +38,7 @@ apiRoutes.use('/pengaduan', pengaduanRoutes);
 apiRoutes.use('/keuangan', keuanganRoutes);
 apiRoutes.use('/pembangunan', pembangunanRoutes);
 apiRoutes.use('/dokumen', dokumenRoutes);
+apiRoutes.use('/umkm', umkmRoutes);
 
 const petaSiap: PetaEndpoint[] = [
   { section: 'Autentikasi', no: 0, fase: 1, basis: '/api/auth', status: 'siap' },
@@ -53,6 +55,7 @@ const petaSiap: PetaEndpoint[] = [
   { section: 'Transparansi Keuangan', no: 6, fase: 2, basis: '/api/keuangan', status: 'siap' },
   { section: 'Pembangunan Desa', no: 7, fase: 2, basis: '/api/pembangunan', status: 'siap' },
   { section: 'Dokumen (PPID + Unduhan)', no: 21, fase: 2, basis: '/api/dokumen', status: 'siap' },
+  { section: 'UMKM Desa', no: 9, fase: 3, basis: '/api/umkm', status: 'siap' },
 ];
 
 // ── Placeholder untuk section lain, dibangkitkan dari registry @desa/shared ──

@@ -590,6 +590,7 @@ export const DASHBOARD_WARGA = {
     { label: 'Riwayat kegiatan', path: '/kegiatan' },
     { label: 'Sertifikat pelatihan', path: '/sertifikat' },
     { label: 'UMKM saya', path: '/umkm' },
+    { label: 'Pesanan saya', path: '/pesanan' },
   ] as SectionItem[],
 };
 

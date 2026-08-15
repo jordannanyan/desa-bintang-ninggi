@@ -28,6 +28,10 @@ import { PengaduanList, PengaduanDetail } from '../pages/admin/PengaduanKelola';
 import { Keuangan } from '../pages/Keuangan';
 import { Pembangunan, ProyekDetail } from '../pages/Pembangunan';
 import { PemerintahanDesa, Ppid, DownloadCenter } from '../pages/Dokumen';
+import { Umkm } from '../pages/Umkm';
+import { UmkmToko } from '../pages/UmkmToko';
+import { PesananSaya, PesananDetail } from '../pages/warga/PesananSaya';
+import { TokoSaya } from '../pages/warga/TokoSaya';
 import { KeuanganKelola } from '../pages/admin/KeuanganKelola';
 import { PembangunanKelola } from '../pages/admin/PembangunanKelola';
 import { DokumenKelola } from '../pages/admin/DokumenKelola';
@@ -62,6 +66,8 @@ const HALAMAN_ASLI: Record<string, JSX.Element> = {
   '/admin/berita': <BeritaKelola />,
   '/admin/agenda': <AgendaKelola />,
   '/warga/surat': <SuratSaya />,
+  '/umkm': <Umkm />,
+  '/warga/umkm': <TokoSaya />,
 };
 
 /**
@@ -151,6 +157,12 @@ const ruteIsiDashboard = (dash: typeof DASHBOARD_PERANGKAT | typeof DASHBOARD_WA
       })),
 
     // Sub-rute yang tidak berasal dari menu registry.
+    ...(dash.route === '/warga'
+      ? [
+          { path: 'pesanan', element: <PesananSaya /> },
+          { path: 'pesanan/:id', element: <PesananDetail /> },
+        ]
+      : []),
     ...(dash.route === '/admin'
       ? [
           { path: 'penduduk/impor', element: <PendudukImpor /> },
@@ -186,6 +198,7 @@ export const router = createBrowserRouter([
       { path: 'pengaduan/lacak', element: <LacakPengaduan /> },
       { path: 'pengaduan/lacak/:kode', element: <LacakPengaduan /> },
       { path: 'pembangunan/:id', element: <ProyekDetail /> },
+      { path: 'umkm/:id', element: <UmkmToko /> },
       ...rutePublik,
       { path: '*', element: <Navigate to="/" replace /> },
     ],
